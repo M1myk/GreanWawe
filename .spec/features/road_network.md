@@ -1,0 +1,51 @@
+# Road network
+
+Status: feature specification v0.2, draft for review; not implemented.
+
+## Goal
+
+Expose a small prepared Gdańsk road network and select reachable endpoints.
+
+## Data model
+
+RoadNetwork, RoadNode, RoadEdge and source metadata. Directed edges and WGS84 geometry.
+
+Definitions: [backend models](../backend/01_domain_models.md), [database](../database/01_schema.md).
+
+## Business invariants
+
+Positive lengths/limits, matching geometry endpoints and references within one network version. Networks used in results are immutable.
+
+Also apply the [shared invariants](../shared/02_business_invariants.md).
+
+## API contract
+
+GET /api/v1/networks and /networks/{id}: 200 or 404 as specified in the shared contract.
+
+Fields, units, validation and errors follow the [shared REST contract](../shared/01_api_contracts.md). Do not maintain a competing contract here.
+
+## Given–When–Then acceptance criteria
+
+### NET-01
+
+- Given: a valid extract.
+- When: it is imported and retrieved.
+- Then: all edges reference existing nodes and matching geometry.
+
+### NET-02
+
+- Given: an edge with a missing node.
+- When: import runs.
+- Then: the whole import is rejected with a reason.
+
+### NET-03
+
+- Given: a one-way road without an alternative.
+- When: a reverse trip is selected.
+- Then: validation reports no directed route.
+
+## Scope and verification
+
+Prepared-data import, read API and map display. No road editor, geocoding or runtime whole-city download.
+
+Use these criteria for at least three meaningful automated tests for the feature. The implementation plan will identify concrete files and tools. Verify UI integration where applicable. Review proposed defaults in the [decision register](../decisions.md) before implementation.
