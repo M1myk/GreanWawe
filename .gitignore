@@ -1,0 +1,53 @@
+# macOS and editors
+.DS_Store
+._*
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.local
+
+# Java / Maven / Gradle backend
+**/target/
+**/build/
+.gradle/
+*.class
+*.hprof
+# Keep Maven/Gradle wrappers versioned
+
+# Node / Vite frontend
+node_modules/
+**/dist/
+.vite/
+*.tsbuildinfo
+coverage/
+playwright-report/
+test-results/
+
+# Logs and temporary files
+*.log
+logs/
+.tmp/
+tmp/
+
+# Local SQLite databases and sidecar files
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+# Keep SQL migrations and JSON/SQL seed data versioned
+
+# Private conversation exports and historical context
+chatgpt-source*
+chatgpt_source*
+/docs/greenwave-context.md
+/docs/private/
