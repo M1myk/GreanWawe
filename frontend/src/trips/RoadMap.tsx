@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
 import { request } from '../api/client';
 
@@ -44,7 +44,22 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
     return () => controller.abort();
   }, [networkId, retry]);
 
-  const drawing = useMemo(() => network ? drawNetwork(network) : undefined, [network]);
+  const geographic = Boolean(fullScreen && networkId !== 'synthetic-v1');
+  const drawing = useMemo(() => network ? drawNetwork(network, geographic) : undefined, [network, geographic]);
+  const canvas = useRef<SVGSVGElement>(null);
+  const [size, setSize] = useState({ width: 600, height: 420 });
+  const [zoom, setZoom] = useState(0);
+
+  useEffect(() => {
+    const element = canvas.current;
+    if (!geographic || !element) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      if (width > 0 && height > 0) setSize({ width, height });
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [drawing, geographic]);
   const streetNames = drawing?.streetNames;
   const panel = fullScreen && <section className="route-panel" aria-label="Wybór punktów">
     <header><strong>GreenWave</strong><button type="button" onClick={openSaved}>Zapisane</button></header>
@@ -63,13 +78,22 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   </section>;
   if (!drawing) return fullScreen ? panel : <p role={error ? 'alert' : 'status'}>
     {error ? 'Road map unavailable. Use the node lists below.' : 'Loading road map…'}</p>;
-  const { points, paths, majorRoads } = drawing;
+  const { points, paths, majorRoads, bounds } = drawing;
+  const radius = Math.hypot(bounds.width, bounds.height) / 2;
+  const center = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+  const scale = Math.min(size.width, size.height) / (2.55 * Math.max(radius, 1)) * 1.5 ** zoom;
+  const width = size.width / scale;
+  const height = size.height / scale;
+  const view = { x: center.x + radius * 0.12 - width / 2,
+    y: center.y - radius * 0.15 - height / 2, width, height };
+  const tiles = geographic ? visibleTiles(view, scale) : [];
+  const pinScale = geographic ? 1 / scale : 1;
   return <div className={fullScreen ? "map-surface" : undefined}>
     {!fullScreen && <div className="actions">
       <button type="button" aria-pressed={field === 'startNodeId'} onClick={() => setField('startNodeId')}>Pick start</button>
       <button type="button" aria-pressed={field === 'destinationNodeId'} onClick={() => setField('destinationNodeId')}>Pick destination</button>
     </div>}
-    <svg viewBox="0 0 600 420" width="100%" aria-label="Road network. Use the node lists for keyboard selection."
+    <svg ref={canvas} viewBox={geographic ? `${view.x} ${view.y} ${view.width} ${view.height}` : '0 0 600 420'} width="100%" aria-label="Road network. Use the node lists for keyboard selection."
       className="road-canvas"
       onClick={event => {
         const transform = event.currentTarget.getScreenCTM();
@@ -91,6 +115,14 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
           fill="#173c30" stroke="#e8efe9" strokeWidth="3" paintOrder="stroke"
           textAnchor="middle" fontSize="10">{edge.name}</text>;
       })}
+      {tiles.map(tile => <image key={tile.url} href={tile.url} x={tile.x} y={tile.y}
+        width={tile.size} height={tile.size} pointerEvents="none" />)}
+      {geographic && <g pointerEvents="none">
+        <circle cx={center.x} cy={center.y} r={radius} fill="#1670df" fillOpacity=".06"
+          stroke="#1462bc" strokeWidth="2" strokeDasharray="7 5" vectorEffect="non-scaling-stroke" />
+        <rect x={bounds.x} y={bounds.y} width={bounds.width} height={bounds.height}
+          fill="none" stroke="#1462bc" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+      </g>}
       {[start, destination].map((id, index) => {
         const endpoint = index ? 'destinationNodeId' : 'startNodeId';
         const dragging = drag?.field === endpoint ? drag : undefined;
@@ -104,7 +136,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
           return { x: position.x + offset.x, y: position.y + offset.y };
         }
 
-        return <g key={endpoint} transform={`translate(${point.x} ${point.y})`}
+        return <g key={endpoint} transform={`translate(${point.x} ${point.y}) scale(${pinScale})`}
           className={fullScreen ? 'draggable-pin' : undefined}
           pointerEvents={fullScreen ? undefined : 'none'}
           onClick={event => { if (fullScreen) event.stopPropagation(); }}
@@ -144,6 +176,11 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
       })}
     </svg>
     {panel}
+    {geographic && <div className="map-controls" aria-label="Sterowanie mapą">
+      <span>Obszar działania GreenWave</span>
+      <button type="button" aria-label="Powiększ mapę" disabled={zoom >= 4} onClick={() => setZoom(value => value + 1)}>+</button>
+      <button type="button" aria-label="Pomniejsz mapę" disabled={zoom <= -2} onClick={() => setZoom(value => value - 1)}>−</button>
+    </div>}
     {networkId !== 'synthetic-v1' && <p className="map-credit"><a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a></p>}
   </div>;
 }
@@ -162,7 +199,31 @@ function nearestNode(points: Map<string, Point>, transform: DOMMatrix, target: P
   return closest;
 }
 
-function drawNetwork(network: Network) {
+const WORLD_SIZE = 256 * 2 ** 14;
+const tileTemplate = import.meta.env.VITE_MAP_TILE_URL || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+function project(node: Node): Point {
+  const sine = Math.sin(node.lat * Math.PI / 180);
+  return {
+    x: WORLD_SIZE * (node.lon + 180) / 360,
+    y: WORLD_SIZE * (0.5 - Math.log((1 + sine) / (1 - sine)) / (4 * Math.PI)),
+  };
+}
+
+function visibleTiles(view: Point & { width: number; height: number }, scale: number) {
+  const level = Math.max(11, Math.min(18, Math.round(14 + Math.log2(scale))));
+  const size = WORLD_SIZE / 2 ** level;
+  const tiles = [];
+  for (let x = Math.floor(view.x / size); x < Math.ceil((view.x + view.width) / size); x++) {
+    for (let y = Math.floor(view.y / size); y < Math.ceil((view.y + view.height) / size); y++) {
+      tiles.push({ x: x * size, y: y * size, size,
+        url: tileTemplate.replace('{z}', String(level)).replace('{x}', String(x)).replace('{y}', String(y)) });
+    }
+  }
+  return tiles;
+}
+
+function drawNetwork(network: Network, geographic: boolean) {
   const latitudes = network.nodes.map(node => node.lat);
   const longitudes = network.nodes.map(node => node.lon);
   const west = Math.min(...longitudes);
@@ -170,7 +231,7 @@ function drawNetwork(network: Network) {
   const longitudeScale = Math.cos(north * Math.PI / 180);
   const scale = Math.min(580 / Math.max(0.00001, (Math.max(...longitudes) - west) * longitudeScale),
     400 / Math.max(0.00001, north - Math.min(...latitudes)));
-  const points = new Map(network.nodes.map(node => [node.id, {
+  const points = new Map(network.nodes.map(node => [node.id, geographic ? project(node) : {
     x: 10 + (node.lon - west) * longitudeScale * scale, y: 10 + (north - node.lat) * scale,
   }]));
   const paths = network.edges.map(edge => {
@@ -189,7 +250,12 @@ function drawNetwork(network: Network) {
     if (!/Grunwaldzka|Kołobrzeska|Chłopska|Jana Pawła II|Rzeczypospolitej|Czarny Dwór|Hallera|Pomorska/.test(edge.name)) continue;
     if (edge.lengthM > (majorRoads.get(edge.name)?.lengthM ?? 0)) majorRoads.set(edge.name, edge);
   }
-  return { points, paths, majorRoads, streetNames };
+  const xs = [...points.values()].map(point => point.x);
+  const ys = [...points.values()].map(point => point.y);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  const bounds = { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+  return { points, paths, majorRoads, streetNames, bounds };
 }
 
 

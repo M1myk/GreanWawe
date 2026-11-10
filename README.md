@@ -38,7 +38,7 @@ Live GPS navigation, real signal control, traffic queues, multiple interacting v
 | Database | Saved configurations, scenarios and results | SQLite through Xerial JDBC; no external database server |
 | Map | Road geometry and background | Prepared OpenStreetMap extract and local SVG road view |
 
-The backend is in `backend/`, the frontend in `frontend/`. Direct dependency versions are pinned in their manifests, with the frontend lockfile included. SQLite integration now uses Xerial JDBC 3.54.1.0, Hibernate community dialects 7.4.13.Final and Flyway 12.4.0 (Hibernate/Flyway managed by Spring Boot). The map renders the stored graph as SVG without an external tile service. Tailwind remains deferred.
+The backend is in `backend/`, the frontend in `frontend/`. Direct dependency versions are pinned in their manifests, with the frontend lockfile included. SQLite integration now uses Xerial JDBC 3.54.1.0, Hibernate community dialects 7.4.13.Final and Flyway 12.4.0 (Hibernate/Flyway managed by Spring Boot). The full-screen view overlays the stored road graph bounds and endpoint pins on OpenStreetMap tiles. The local road drawing provides a fallback if tiles fail. Set VITE_MAP_TILE_URL to override the tile URL template. Tailwind remains deferred.
 
 ## How I am building the project
 

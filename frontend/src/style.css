@@ -59,3 +59,8 @@ fieldset { border: 0; margin: 0; padding: 0; }
 .draggable-pin { cursor: grab; touch-action: none; user-select: none; }
 .draggable-pin:active { cursor: grabbing; }
 .route-panel .map-tip { color: #52665c; margin-top: 2px; }
+
+.map-controls { position: absolute; right: 14px; bottom: 34px; display: grid; justify-items: end; gap: 5px; }
+.map-controls span { background: white; color: #14519a; padding: 4px 9px; border-radius: 6px; font-size: .78rem; }
+.map-controls button { width: 44px; height: 44px; padding: 0; background: white; color: #17352c; font-size: 1.5rem; box-shadow: 0 1px 5px #16372a40; }
+@media (max-width: 600px) { .map-controls { top: 12px; bottom: auto; } }

@@ -87,3 +87,7 @@ At the user's request, AI made the Gdańsk road map the landing view, added stre
 ## Map pin interactions and yellow-light decision
 
 AI added pointer dragging, independent clear buttons, and an explicit active endpoint indicator. The frontend build and diff check passed. A desktop browser check verified moving both pins, retaining the original point after an off-road drop, and clearing B without removing A. Touch uses pointer events and was not tested on a physical phone. The user approved a 30 m threshold for yellow-light entry. The rule is recorded for stage 5.
+
+## Wider map and coverage overlay
+
+AI added visible OpenStreetMap tiles, zoom controls and a coverage overlay around the existing graph. The frontend build and diff check passed. A browser check confirmed that road labels, greenery, and the coastline rendered, that zoom in and out changed and restored the viewport, and that street selection still displayed a pin. The blue circle approximates coverage and the thin rectangle marks the imported graph bounds.
