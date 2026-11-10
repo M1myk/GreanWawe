@@ -56,6 +56,44 @@ class TripPresetHttpTest {
         return object(response.body()).get("id").toString();
     }
 
+    @Test void simulationLifecycleAndIdempotency() throws Exception {
+        var created = send("POST", "/simulations", """
+                {"networkId":"synthetic-v1","startNodeId":"n1","destinationNodeId":"n3","randomSeed":42}
+                """);
+        assertEquals(201, created.statusCode(), created.body());
+        String path = "/simulations/" + object(created.body()).get("id");
+        assertEquals("/api/v1" + path, created.headers().firstValue("Location").orElseThrow());
+        assertEquals("READY", object(created.body()).get("status"));
+        try {
+            String commands = path + "/commands";
+            String start = """
+                    {"commandId":"start","type":"START"}
+                    """;
+            var started = send("POST", commands, start);
+            assertEquals(200, started.statusCode(), started.body());
+            assertEquals("RUNNING", object(started.body()).get("status"));
+            assertEquals(started.body(), send("POST", commands, start).body());
+            assertEquals(409, send("POST", commands, start.replace("START", "PAUSE")).statusCode());
+            long deadline = System.nanoTime() + java.time.Duration.ofSeconds(4).toNanos();
+            while (((Number) object(send("GET", path, null).body()).get("simulationTimeSeconds")).doubleValue() == 0) {
+                assertTrue(System.nanoTime() < deadline, "Simulation did not advance");
+                Thread.sleep(25);
+            }
+            var paused = send("POST", commands, start.replace("start", "pause").replace("START", "PAUSE"));
+            assertEquals(200, paused.statusCode(), paused.body());
+            assertEquals("PAUSED", object(paused.body()).get("status"));
+            Thread.sleep(250);
+            assertEquals(paused.body(), send("GET", path, null).body());
+            assertEquals("RUNNING", object(send("POST", commands,
+                    start.replace("start", "resume").replace("START", "RESUME")).body()).get("status"));
+            var reset = send("POST", commands, start.replace("start", "reset").replace("START", "RESET"));
+            assertEquals(created.body(), reset.body());
+        } finally {
+            assertEquals(204, send("DELETE", path, null).statusCode());
+        }
+        assertEquals(404, send("GET", path, null).statusCode());
+    }
+
     @Test void fullCrudAndStaleVersion() throws Exception {
         var response = send("POST", "/trip-presets", body("  Commute  ", "n3", ""));
         assertEquals(201, response.statusCode(), response.body());

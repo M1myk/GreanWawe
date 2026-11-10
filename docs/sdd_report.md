@@ -107,3 +107,19 @@ AI generated Gdańsk v2 from the existing extracts, added access filters to the 
 ## Eastern road connections and route preview
 
 AI identified that the previous eastern boundary cut off Łozy. The v3 migration adds the missing eastern roads, and the map previews a directed car route between the selected access nodes. The frontend build and 14 backend tests passed. The regression test checks that the route from Łozy to Aleksandra Zelwerowicza crosses the former boundary and that every geometry segment corresponds to a directed graph edge. API tests also cover missing and disconnected endpoints. The updated line was not checked in a browser.
+
+## Stage 5 — baseline simulation
+
+Codex drafted the feature contract, adapted the route search to A*, implemented the vehicle and signal models in Java and added the session lifecycle and map controls. The runtime defaults and simulated signal placement are recorded in the baseline specification. No real signal data, database migration or new dependency was added.
+
+The first vehicle tests showed that a continuous stopping-distance estimate underestimated the distance of the last partial braking increment when movement is sampled every 0.1 s. The stopping envelope now accounts for that final full tick. The tests check red-light entry, acceleration and braking bounds, downstream speed limits, arrival, seed replay and the yellow threshold. The HTTP test covers creation, ticking, pause, resume, reset, command replay and deletion.
+
+The browser check ran Łozy → Gdańska on the imported graph, paused and resumed at 5×, reached the destination in 109.3 simulation seconds with one stop and 6.3 seconds stopped, reset to zero and cleared the run when the destination changed. Those numbers describe the synthetic signal scenario, not measured traffic.
+
+Final verification: Maven verify passed all 19 backend tests, the frontend production build passed with TypeScript checking, and git diff --check found no whitespace issues.
+
+## Baseline driving view
+
+Codex added a closer follow camera, interpolated vehicle positions along confirmed route progress, and exposed the current street and upcoming junction or simulated signal in the baseline snapshot. The view can close and reopen during the same run. The arrival estimate uses current speed, and signal phase changes have a separate countdown where known.
+
+Maven verify passed 21 tests and the frontend production build passed TypeScript checking. In the browser, Łozy to Gdańska opened Driving View, the car moved while centered, deeper zoom worked, and the overview restored without pausing the run. Driving View reopened from the overview controls.

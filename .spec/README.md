@@ -1,6 +1,6 @@
 # GreenWave — MVP specification v0.2
 
-Date: 2026-11-10. Status: stages 2–4 implemented; functional simulation specifications remain drafts for review. Documentation and code comments are written in English.
+Date: 2026-11-10. Status: stages 2–5 implemented; the GreenWave comparison specification remains a draft for review. Documentation and code comments are written in English.
 
 ## Goal
 
@@ -41,6 +41,7 @@ Each document includes a data model, invariants, API references, scope and Given
 - [Vehicle physics](features/vehicle_physics.md)
 - [A* navigation](features/astar_navigation.md)
 - [GreenWave navigation](features/greenwave_navigation.md)
+- [Baseline simulation](features/baseline_simulation.md)
 - [Simulation comparison](features/simulation_comparison.md)
 
 Shared definitions are linked rather than maintained as competing contracts. Java and React are selected; detailed contracts, numerical defaults and the heuristic remain proposals listed in the decision register. Approval of the SDD process does not approve every technical proposal.

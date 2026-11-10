@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
 import { request } from '../api/client';
+import { BaselineControls } from './BaselineControls';
+import type { SimulationSnapshot } from './BaselineControls';
+import { DrivingSummary } from './DrivingSummary';
+import { useVehiclePosition } from './useVehiclePosition';
+
+const MIN_ZOOM = -2;
+const MAX_ZOOM = 7;
+const clampZoom = (zoom: number) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
 
 interface Node { id: string; lat: number; lon: number }
 interface Network { nodes: Node[]; edges: { fromNodeId: string; toNodeId: string; name: string; lengthM: number }[] }
@@ -31,8 +39,24 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   const [drag, setDrag] = useState<PinDrag>();
   const [hint, setHint] = useState('');
   const [preview, setPreview] = useState<{ key: string; geometry?: [number, number][]; lengthM?: number }>();
+  const [simulationView, setSimulationView] = useState<{ key: string; snapshot?: SimulationSnapshot }>();
   const routeKey = JSON.stringify([networkId, start, destination]);
   const route = preview?.key === routeKey ? preview : undefined;
+  const simulation = simulationView?.key === routeKey ? simulationView.snapshot : undefined;
+  const [drivingKey, setDrivingKey] = useState<string>();
+  const [drivingZoom, setDrivingZoom] = useState(5);
+  const driving = drivingKey === routeKey && Boolean(simulation);
+  const position = useVehiclePosition(simulation);
+  const vehiclePoint = position && project({ id: '', lon: position[0], lat: position[1] });
+
+  function openDriving() {
+    setDrivingZoom(5);
+    setDrivingKey(routeKey);
+  }
+
+  function closeDriving() { setDrivingKey(undefined); }
+
+  const routeGeometry = simulation?.routeGeometry ?? route?.geometry;
 
   useEffect(() => {
     if (!fullScreen || !start || !destination) return;
@@ -71,7 +95,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   const movedMap = useRef(false);
   const radius = drawing ? Math.hypot(drawing.bounds.width, drawing.bounds.height) / 2 : 1;
   const baseScale = Math.min(size.width, size.height) / (2.55 * Math.max(radius, 1));
-  const zoom = camera.zoom;
+  const zoom = driving ? drivingZoom : camera.zoom;
   const scale = baseScale * 1.5 ** zoom;
 
   useEffect(() => {
@@ -83,11 +107,13 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
       const anchor = { x: event.clientX - rect.left - rect.width / 2,
         y: event.clientY - rect.top - rect.height / 2 };
       const units = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? rect.height : 1;
-      setCamera(current => adjustCamera(current, baseScale, -event.deltaY * units / 220, anchor, anchor));
+      const delta = -event.deltaY * units / 220;
+      if (driving) setDrivingZoom(current => clampZoom(current + delta));
+      else setCamera(current => adjustCamera(current, baseScale, delta, anchor, anchor));
     }
     element.addEventListener('wheel', wheel, { passive: false });
     return () => element.removeEventListener('wheel', wheel);
-  }, [baseScale, drawing, geographic]);
+  }, [baseScale, drawing, geographic, driving]);
 
   useEffect(() => {
     const element = canvas.current;
@@ -124,7 +150,15 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
     updateEndpoint(endpoint, id, access && Math.hypot(access.x - point.x, access.y - point.y) < 0.01 ? undefined : point);
     return true;
   }
-  const panel = fullScreen && <section className="route-panel" aria-label="Wybór punktów">
+  function changeZoom(delta: number) {
+    if (driving) setDrivingZoom(current => clampZoom(current + delta));
+    else setCamera(current => ({ ...current, zoom: clampZoom(current.zoom + delta) }));
+  }
+
+  const panel = fullScreen && <section className={driving ? 'route-panel route-panel--driving' : 'route-panel'}
+    aria-label={driving ? 'Widok jazdy' : 'Wybór punktów'}
+    onKeyDown={event => { if (driving && event.key === 'Escape') closeDriving(); }}>
+    {driving && simulation && <DrivingSummary navigation={simulation.navigation} close={closeDriving} />}
     <header><strong>GreenWave</strong><button type="button" onClick={openSaved}>Zapisane</button></header>
     {(['startNodeId', 'destinationNodeId'] as const).map((key, index) => {
       const selected = index ? destination : start;
@@ -147,9 +181,11 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
     <p role="status">{error ? 'Nie udało się wczytać mapy.' : !drawing ? 'Wczytywanie mapy…'
       : hint || (field === 'startNodeId' ? 'Wybierasz A · start' : 'Wybierasz B · cel')}</p>
     {start && destination && <p role="status">
-      {!route ? 'Wyznaczanie trasy…' : route.lengthM === undefined ? 'Nie udało się wyznaczyć dojazdu.'
+      {simulation ? 'Trasa bazowa A*' : !route ? 'Wyznaczanie trasy…' : route.lengthM === undefined ? 'Nie udało się wyznaczyć dojazdu.'
         : `Trasa samochodowa · ${(route.lengthM / 1000).toLocaleString('pl', { maximumFractionDigits: 2 })} km`}
     </p>}
+    {route?.lengthM !== undefined && route.lengthM > 0 && <BaselineControls key={routeKey}
+      routeKey={routeKey} networkId={networkId} start={start} destination={destination} publish={setSimulationView} driving={driving} openDriving={openDriving} />}
     {drawing && !error && <p className="map-tip">Kliknij miejsce w zaznaczonym obszarze, aby ustawić pinezkę. Przeciągnij tło, aby przesunąć mapę.</p>}
     {error && <button type="button" onClick={() => { setError(false); setRetry(value => value + 1); }}>Spróbuj ponownie</button>}
   </section>;
@@ -159,8 +195,11 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   const center = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
   const width = size.width / scale;
   const height = size.height / scale;
-  const view = { x: center.x + radius * 0.12 + camera.x - width / 2,
-    y: center.y - radius * 0.15 + camera.y - height / 2, width, height };
+  const focus = driving && vehiclePoint ? vehiclePoint : {
+    x: center.x + radius * 0.12 + camera.x,
+    y: center.y - radius * 0.15 + camera.y,
+  };
+  const view = { x: focus.x - width / 2, y: focus.y - height / 2, width, height };
   const tiles = geographic ? visibleTiles(view, scale) : [];
   const pinScale = geographic ? 1 / scale : 1;
   return <div className={fullScreen ? "map-surface" : undefined}>
@@ -197,11 +236,13 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
           ? Math.max(1, Math.hypot(next.x - other.x, next.y - other.y)) /
             Math.max(1, Math.hypot(previous.x - other.x, previous.y - other.y))
           : 1;
-        setCamera(current => adjustCamera(current, baseScale, Math.log(ratio) / Math.log(1.5), before, after));
+        const delta = Math.log(ratio) / Math.log(1.5);
+        if (driving && other) setDrivingZoom(current => clampZoom(current + delta));
+        else if (!driving) setCamera(current => adjustCamera(current, baseScale, delta, before, after));
       }}
       onLostPointerCapture={event => { pointers.current.delete(event.pointerId); }}
       onClick={event => {
-        if (geographic && movedMap.current) return;
+        if (driving || (geographic && movedMap.current)) return;
         const transform = event.currentTarget.getScreenCTM();
         if (!transform) return;
         if (geographic) {
@@ -234,14 +275,23 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
         <rect x={bounds.x} y={bounds.y} width={bounds.width} height={bounds.height}
           fill="none" stroke="#1462bc" strokeWidth="1" vectorEffect="non-scaling-stroke" />
       </g>}
-      {geographic && route?.geometry && <polyline
-        points={route.geometry.map(([lon, lat]) => {
+      {geographic && routeGeometry && <polyline
+        points={routeGeometry.map(([lon, lat]) => {
           const point = project({ id: '', lat, lon });
           return `${point.x},${point.y}`;
         }).join(' ')}
         fill="none" stroke="#176be0" strokeWidth="5" strokeLinecap="round"
         strokeLinejoin="round" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
-      {[start, destination].map((id, index) => {
+      {geographic && simulation?.signals.map(signal => {
+        const [lon, lat] = signal.position;
+        const point = project({ id: signal.id, lat, lon });
+        const colors = { RED: '#d72c35', YELLOW: '#ffbf30', GREEN: '#14884c' };
+        return <g key={signal.id} transform={`translate(${point.x} ${point.y}) scale(${pinScale})`} pointerEvents="none">
+          <circle r="6" fill={colors[signal.phase]} stroke="#16202a" strokeWidth="2" />
+          <title>{signal.type === 'FIXED' ? 'Symulowane światło stałe' : 'Symulowane światło dla pieszych'} · {signal.phase}</title>
+        </g>;
+      })}
+      {!driving && [start, destination].map((id, index) => {
         const endpoint = index ? 'destinationNodeId' : 'startNodeId';
         const dragging = drag?.field === endpoint ? drag : undefined;
         const access = points.get(id);
@@ -307,12 +357,17 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
           <text y="-16" textAnchor="middle" fill="white" fontSize="12" fontWeight="700">{index ? 'B' : 'A'}</text>
         </g></g>;
       })}
+      {geographic && vehiclePoint && <g transform={`translate(${vehiclePoint.x} ${vehiclePoint.y}) scale(${pinScale * (driving ? 1.5 : 1.2)})`}
+        pointerEvents="none" aria-label="Pojazd w symulacji">
+        <circle r="10" fill="#124ba7" stroke="white" strokeWidth="2" />
+        <path d="M-5 2 V-1 L-3 -4 H3 L5 -1 V2 H4 V4 H2 V2 H-2 V4 H-4 V2 Z" fill="white" />
+      </g>}
     </svg>
     {panel}
     {geographic && <div className="map-controls" aria-label="Sterowanie mapą">
       <span>Obszar działania GreenWave</span>
-      <button type="button" aria-label="Powiększ mapę" disabled={zoom >= 4} onClick={() => setCamera(current => ({ ...current, zoom: Math.min(4, current.zoom + 1) }))}>+</button>
-      <button type="button" aria-label="Pomniejsz mapę" disabled={zoom <= -2} onClick={() => setCamera(current => ({ ...current, zoom: Math.max(-2, current.zoom - 1) }))}>−</button>
+      <button type="button" aria-label="Powiększ mapę" disabled={zoom >= MAX_ZOOM} onClick={() => changeZoom(1)}>+</button>
+      <button type="button" aria-label="Pomniejsz mapę" disabled={zoom <= MIN_ZOOM} onClick={() => changeZoom(-1)}>−</button>
     </div>}
     {networkId !== 'synthetic-v1' && <p className="map-credit"><a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a></p>}
   </div>;
@@ -320,7 +375,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
 
 function adjustCamera(current: Point & { zoom: number }, baseScale: number, delta: number,
   before: Point, after: Point) {
-  const zoom = Math.max(-2, Math.min(4, current.zoom + delta));
+  const zoom = clampZoom(current.zoom + delta);
   const oldScale = baseScale * 1.5 ** current.zoom;
   const newScale = baseScale * 1.5 ** zoom;
   return {

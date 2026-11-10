@@ -1,5 +1,7 @@
 # Backend simulation rules
 
+The implemented single-run lifecycle and defaults are documented in the [stage 5 baseline specification](../features/baseline_simulation.md). Two-run lifecycle, shared scenarios and comparison persistence below describe the planned comparison.
+
 ## Clock and lifecycle
 
 Proposed fixed step: 0.1 s. Store time as integer ticks and convert to seconds to avoid clock drift. Playback rates 0.5×/1×/2×/5× change tick throughput in real time, not tick length or outcomes.

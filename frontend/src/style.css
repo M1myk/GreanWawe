@@ -73,3 +73,34 @@ fieldset { border: 0; margin: 0; padding: 0; }
   .endpoint-field label { grid-template-columns: 28px 56px minmax(0, 1fr); }
   .endpoint-field input { padding: 12px; font-size: 1.05rem; }
 }
+
+.baseline-controls {
+  border-top: 1px solid #dce4ee;
+  display: grid;
+  gap: .45rem;
+  margin-top: .65rem;
+  padding-top: .65rem;
+}
+.baseline-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; }
+.baseline-actions button, .baseline-actions select { min-height: 36px; }
+.baseline-actions label { display: flex; align-items: center; margin: 0; }
+.baseline-actions select { width: auto; padding: 4px 8px; }
+.route-panel .baseline-controls p { margin: 0; }
+
+.route-panel--driving > :not(.driving-summary, .baseline-controls) { display: none; }
+.driving-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.driving-heading div, .driving-next { display: grid; gap: 4px; }
+.driving-heading div > span { font-size: .8rem; }
+.driving-heading strong { font-size: 1.25rem; line-height: 1.2; }
+.driving-heading button { padding: 0; width: 44px; height: 44px; flex: none; font-size: 1.5rem; }
+.driving-next { margin-top: 12px; padding: 10px 12px; background: #eef5ff; border-radius: 8px; }
+.driving-readouts { display: flex; flex-wrap: wrap; gap: 4px 12px; font-variant-numeric: tabular-nums; }
+.driving-phase { display: flex; align-items: center; gap: 8px; }
+.driving-phase i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+.phase-green { background: #14884c; }
+.phase-yellow { background: #ffbf30; }
+.phase-red { background: #d72c35; }
+.route-panel--driving { width: min(340px, calc(100% - 32px)); }
+@media (max-width: 760px) {
+  .route-panel--driving { top: auto; bottom: 28px; max-height: 42%; }
+}

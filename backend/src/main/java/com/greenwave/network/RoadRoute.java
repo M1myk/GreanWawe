@@ -10,24 +10,50 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 
-record RoadRoute(List<List<Double>> geometry, double lengthM) {
-    private record Visit(String id, double seconds) {}
+public record RoadRoute(List<List<Double>> geometry, double lengthM) {
+    private record Visit(String id, double seconds, double estimate) {}
 
     static RoadRoute between(NetworkController.Network network, String start, String destination) {
+        var edges = findEdges(network, start, destination, Double.POSITIVE_INFINITY);
+        if (edges.isEmpty()) {
+            var node = network.nodes().stream().filter(candidate -> candidate.id().equals(start)).findFirst().orElseThrow();
+            return new RoadRoute(List.of(List.of(node.lon(), node.lat())), 0);
+        }
+        return fromEdges(edges);
+    }
+
+    public static RoadRoute fromEdges(List<NetworkController.Edge> edges) {
+        var geometry = new ArrayList<List<Double>>();
+        geometry.add(edges.getFirst().geometry().getFirst());
+        double length = 0;
+        for (var edge : edges) {
+            geometry.addAll(edge.geometry().subList(1, edge.geometry().size()));
+            length += edge.lengthM();
+        }
+        return new RoadRoute(List.copyOf(geometry), length);
+    }
+
+    public static List<NetworkController.Edge> findEdges(NetworkController.Network network, String start,
+                                                         String destination, double vehicleMax) {
         var nodes = network.nodes().stream().collect(Collectors.toMap(NetworkController.Node::id, node -> node));
         if (!nodes.containsKey(start) || !nodes.containsKey(destination)) {
             throw new ApiException(404, "NOT_FOUND", "Route endpoint not found in the road network");
         }
-        if (start.equals(destination)) {
-            var node = nodes.get(start);
-            return new RoadRoute(List.of(List.of(node.lon(), node.lat())), 0);
-        }
+        if (start.equals(destination)) return List.of();
+
+        double maxSpeed = Math.min(vehicleMax, network.edges().stream()
+                .mapToDouble(NetworkController.Edge::speedLimitMps).max().orElse(vehicleMax));
+        double distanceScale = network.edges().stream().mapToDouble(edge -> {
+            double straight = straightDistance(nodes.get(edge.fromNodeId()), nodes.get(edge.toNodeId()));
+            return straight > 0 ? edge.lengthM() / straight : 1;
+        }).min().orElse(1);
+        double secondsPerMeter = 0.999 * Math.min(1, distanceScale) / maxSpeed;
         var outgoing = network.edges().stream().collect(Collectors.groupingBy(NetworkController.Edge::fromNodeId));
-        var queue = new PriorityQueue<>(Comparator.comparingDouble(Visit::seconds).thenComparing(Visit::id));
+        var queue = new PriorityQueue<>(Comparator.comparingDouble(Visit::estimate).thenComparing(Visit::id));
         Map<String, Double> costs = new HashMap<>();
         Map<String, NetworkController.Edge> previous = new HashMap<>();
         costs.put(start, 0.0);
-        queue.add(new Visit(start, 0));
+        queue.add(new Visit(start, 0, straightDistance(nodes.get(start), nodes.get(destination)) * secondsPerMeter));
         while (!queue.isEmpty()) {
             var visit = queue.remove();
             if (visit.seconds() > costs.get(visit.id())) continue;
@@ -39,24 +65,28 @@ record RoadRoute(List<List<Double>> geometry, double lengthM) {
                     id = edge.fromNodeId();
                 }
                 Collections.reverse(reversed);
-                var geometry = new ArrayList<List<Double>>();
-                geometry.add(reversed.getFirst().geometry().getFirst());
-                double length = 0;
-                for (var edge : reversed) {
-                    geometry.addAll(edge.geometry().subList(1, edge.geometry().size()));
-                    length += edge.lengthM();
-                }
-                return new RoadRoute(geometry, length);
+                return List.copyOf(reversed);
             }
             for (var edge : outgoing.getOrDefault(visit.id(), List.of())) {
-                double seconds = visit.seconds() + edge.lengthM() / edge.speedLimitMps();
+                double seconds = visit.seconds() + edge.lengthM() / Math.min(edge.speedLimitMps(), vehicleMax);
                 if (seconds < costs.getOrDefault(edge.toNodeId(), Double.POSITIVE_INFINITY)) {
                     costs.put(edge.toNodeId(), seconds);
                     previous.put(edge.toNodeId(), edge);
-                    queue.add(new Visit(edge.toNodeId(), seconds));
+                    double estimate = seconds + straightDistance(nodes.get(edge.toNodeId()), nodes.get(destination)) * secondsPerMeter;
+                    queue.add(new Visit(edge.toNodeId(), seconds, estimate));
                 }
             }
         }
         throw new ApiException(422, "NO_ROUTE", "No directed road route connects these points");
+    }
+
+    private static double straightDistance(NetworkController.Node from, NetworkController.Node to) {
+        double deltaLat = Math.toRadians(to.lat() - from.lat());
+        double deltaLon = Math.toRadians(to.lon() - from.lon());
+        double sinLat = Math.sin(deltaLat / 2);
+        double sinLon = Math.sin(deltaLon / 2);
+        double a = sinLat * sinLat + Math.cos(Math.toRadians(from.lat())) *
+                Math.cos(Math.toRadians(to.lat())) * sinLon * sinLon;
+        return 12_742_000 * Math.asin(Math.sqrt(Math.min(1, a)));
     }
 }

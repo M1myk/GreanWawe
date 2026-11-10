@@ -17,6 +17,10 @@ Prefix `/api/v1`; UTF-8 JSON; persisted timestamps in UTC ISO 8601. Simulation t
 
 Unlimited history browsing and scenario deletion through the UI are outside the MVP. Completed results survive backend restart; snapshot retrieval for a persisted completed comparison returns the saved final snapshot.
 
+## Baseline simulation
+
+Stage 5 exposes the single-run simulation under `/simulations`. See the [baseline lifecycle and snapshot](../features/baseline_simulation.md) and the [implemented OpenAPI contract](openapi.yaml). The comparison endpoints described below are planned.
+
 ## Create comparison
 
 ```json

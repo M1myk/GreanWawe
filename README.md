@@ -15,7 +15,7 @@ All signal phases, cycles and pedestrian requests are simulated by the backend. 
 
 ## Current status
 
-Stage 4 is implemented. GreenWave includes saved-trip CRUD, a versioned Gdańsk road graph in SQLite and a map for selecting trip endpoints. The synthetic test scenario remains available. Vehicle movement, simulated lights and algorithm comparison are planned.
+Stage 5 adds a single A* drive on the Gdańsk map, with simulated traffic lights, vehicle motion and journey metrics. Saved-trip CRUD and the versioned road graph use SQLite. Baseline sessions live in backend memory and disappear on restart. The GreenWave algorithm and side-by-side comparison are planned.
 
 ## Planned MVP
 
@@ -63,7 +63,7 @@ I remain responsible for scope, design decisions, understanding the solution and
 | 2. Project setup | Separate Java/React projects, pinned dependencies, CORS and local setup | Implemented and verified |
 | 3. Saved trips | End-to-end CRUD with SQLite and a simple UI | Implemented and verified |
 | 4. Road network | Small Gdańsk extract, validated graph and map display | Implemented |
-| 5. Baseline simulation | Clock, signals, vehicle physics and A* | Planned |
+| 5. Baseline simulation | Clock, signals, vehicle physics and A* | Implemented |
 | 6. GreenWave | Limited-observation routing and speed adaptation | Planned |
 | 7. Integration and verification | Controls, animation, results and reproducibility checks | Planned |
 | 8. Submission | Verified setup guide, GIF/MP4 demo and public GitHub repository | Planned |
@@ -74,7 +74,7 @@ The [implementation plan](.spec/implementation_plan.md) gives more detail. The a
 
 I use **ChatGPT and Codex (OpenAI)** as engineering assistants and technical mentors. So far, AI has helped organize requirements, draft the architecture and specification, identify gaps and conflicting rules, define acceptance criteria, and prepare project documentation and `.gitignore`.
 
-In stage 2, AI also implemented the Java/React skeletons, configured CORS, prepared and ran three HTTP integration tests, built the frontend and checked browser connection, failure and recovery states. In stage 3, AI also prepared the layered preset implementation, migrations, OpenAPI contract, React CRUD UI and integration tests. Testing exposed an initial null-version getter bug; AI fixed it and reran the suite. Further simulation work remains planned. The product itself does not currently include an AI feature; its distinctive functionality is the GreenWave simulation.
+In stage 2, AI also implemented the Java/React skeletons, configured CORS, prepared and ran three HTTP integration tests, built the frontend and checked browser connection, failure and recovery states. In stage 3, AI also prepared the layered preset implementation, migrations, OpenAPI contract, React CRUD UI and integration tests. Testing exposed an initial null-version getter bug; AI fixed it and reran the suite. In stage 5, AI implemented the baseline simulation, map controls and regression tests. Tests exposed an issue with the last braking increment; AI corrected the stopping calculation. The product itself does not currently include an AI feature; its distinctive functionality is the GreenWave simulation.
 
 Agent behaviour and constraints are documented in [AGENTS.md](AGENTS.md). Actual activities, findings and verification are recorded in the [SDD report](docs/sdd_report.md). Private conversation exports and conversation links are excluded from public project materials.
 
@@ -123,7 +123,9 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:5173` to see the full-screen Gdańsk road map. Search for an imported street in **Skąd** or **Dokąd**, or focus a field and click near a road on the map. Blue A marks the origin and red B marks the destination. Stop each server with Ctrl+C.
+Open `http://localhost:5173` to see the full-screen Gdańsk road map. Search for an imported street in **Skąd** or **Dokąd**, or focus a field and click near a road on the map. Blue A marks the origin and red B marks the destination.
+
+Once a route is available, press **Rozpocznij teraz** to run the A* baseline and open Driving View. The camera follows the vehicle and shows the current street and the next junction or light. The estimate uses current speed. The × button restores the overview during the same run, and **Widok jazdy** reopens the camera. **Pauza** pauses the simulation, **Wznów** resumes it and **Reset** returns to the same initial state. **Tempo** changes playback speed without changing the physics. The map shows the moving car and the simulated signals along its route. The panel shows elapsed simulation time, speed, stops and time spent stopped. Changing either endpoint starts a new session when you next press **Start**. Stop each server with Ctrl+C.
 
 Open **Zapisane** to manage named trip presets. The saved-trip form opens the Gdańsk extract. Use **Pick start** and **Pick destination**, then click near road nodes or select their IDs from the lists. Enter a name and save. For a minimal example, switch to the synthetic scenario and choose n1 → n3 or n1 → n2. Use Edit to load and update it; Delete asks for confirmation. Node n4 is isolated and demonstrates validation. Seed and numerical parameters are saved configuration values, not a running simulation.
 
@@ -131,7 +133,7 @@ Open **Zapisane** to manage named trip presets. The saved-trip form opens the Gd
 
 From `backend/`, run `mvn verify` for HTTP integration tests and the executable JAR. From `frontend/`, run `npm run typecheck` or `npm run build` (which also runs typecheck). The frontend build is written to `frontend/dist/`.
 
-Current automated coverage: 12 HTTP integration tests covering health/CORS, complete CRUD, nested validation and malformed JSON, directed reachability, pagination, concurrent/stale updates, migrations, foreign keys reopening a persisted SQLite file, network geometry and unknown network IDs. Browser checks cover connection states, creation, editing, validation and retrieval after a backend restart. Deletion is verified through HTTP tests and the empty list was checked in the browser. There are no simulation tests yet.
+Automated coverage includes HTTP integration tests covering health/CORS, complete CRUD, nested validation and malformed JSON, directed reachability, pagination, concurrent/stale updates, migrations, foreign keys reopening a persisted SQLite file, network geometry and unknown network IDs. Browser checks cover connection states, creation, editing, validation and retrieval after a backend restart. Deletion is verified through HTTP tests and the empty list was checked in the browser. Baseline coverage includes the REST lifecycle and pause, A* path costs, braking and downstream speed limits, the yellow-light threshold, and seeded replay.
 
 ### Configuration
 
@@ -181,7 +183,7 @@ resources/db/migration/      Versioned SQLite schema and synthetic fixture
 
 Entities are not exposed over HTTP. Public preset versions start at 1; stale edits return 409 and retain the form so the user can reload deliberately. Configurations are independently serializable; future comparisons will own their own copies.
 
-Implemented endpoints are described in [OpenAPI](.spec/shared/openapi.yaml): health, scenario reads, road-network reads and full trip-preset CRUD. The broader Markdown contract also contains planned simulation endpoints, which do not exist yet.
+Implemented endpoints are described in [OpenAPI](.spec/shared/openapi.yaml): health, scenario reads, road-network reads and full trip-preset CRUD and baseline simulation sessions. The broader Markdown contract also describes the planned comparison endpoints.
 
 See [road data provenance](docs/road-network-data.md) for the extract bounds, licence and graph limitations.
 
