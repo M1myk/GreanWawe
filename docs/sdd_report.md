@@ -71,3 +71,19 @@ A test JAR was rebuilt while its older instance was running, causing a class-loa
 - Documentation links, OpenAPI internal references and git diff --check passed. No external OpenAPI conformance validator or frontend automation framework was installed; do not present structural reference checks as full schema conformance testing.
 
 Work is on feat/trip-presets. No commit, push, publication or simulation implementation was performed. PRE-03's future comparison-copy behaviour cannot yet be exercised because comparisons are not implemented. Manual user code intervention and a successful-test screenshot were not supplied; this report records text test results without inventing either artifact.
+
+## 2026-11-10 — stage 4 road network
+
+The user authorized stage 4 after sharing a reference map. AI selected an approximate rectangular boundary, documented the plan, and combined smaller OpenStreetMap API extracts after the full request failed. The importer produced a versioned Flyway migration with 6,958 nodes and 11,410 directed edges. The API exposes network versions and geometry. React renders the graph with labels, attribution, and endpoint selection. No new package dependencies were required.
+
+Maven verification passed 12 HTTP integration tests. The offline importer passed two tests for reversed one-way direction and missing references. SQLite foreign key validation returned no violations. The frontend typecheck and production build passed. In the browser, both map clicks populated the endpoint selectors and a Gdańsk trip was saved through the form into a disposable SQLite database.
+
+The data provenance document records the approximate bounds, the selected road classes, the default speed for missing limits, and exclusions such as turn restrictions. Signal placement and simulation belong to later stages.
+
+## Full-screen map picker
+
+At the user's request, AI made the Gdańsk road map the landing view, added street search and endpoint pins, and moved named preset management into a dialog. The existing API and storage remain in use. The frontend production build and git diff check passed. In the browser, both street searches selected their endpoints, two pins rendered, the SVG matched the viewport height, and the saved-trip dialog opened and closed.
+
+## Map pin interactions and yellow-light decision
+
+AI added pointer dragging, independent clear buttons, and an explicit active endpoint indicator. The frontend build and diff check passed. A desktop browser check verified moving both pins, retaining the original point after an off-road drop, and clearing B without removing A. Touch uses pointer events and was not tested on a physical phone. The user approved a 30 m threshold for yellow-light entry. The rule is recorded for stage 5.

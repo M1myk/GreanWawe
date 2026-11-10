@@ -14,7 +14,7 @@ Definitions: [backend models](../backend/01_domain_models.md), [database](../dat
 
 ## Business invariants
 
-INV-01 and INV-04. Random timelines depend on seed/version, never vehicle routes. Planners receive only permitted observations. Resolve the draft YELLOW rule before implementing it.
+INV-01 and INV-04. Random timelines depend on seed/version, never vehicle routes. Planners receive only permitted observations. Apply the approved 30 m YELLOW rule in the simulation rules.
 
 Also apply the [shared invariants](../shared/02_business_invariants.md).
 

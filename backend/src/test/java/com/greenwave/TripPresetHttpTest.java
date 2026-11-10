@@ -116,7 +116,7 @@ class TripPresetHttpTest {
         var id = create();
         var jdbc = new JdbcTemplate(dataSource);
         assertEquals(1, jdbc.queryForObject("PRAGMA foreign_keys", Integer.class));
-        assertEquals(2, jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE success=1", Integer.class));
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE version='3' AND success=1", Integer.class));
         assertThrows(org.springframework.dao.DataAccessException.class, () -> jdbc.update("DELETE FROM scenario WHERE id='synthetic-v1'"));
         try (var connection = java.sql.DriverManager.getConnection("jdbc:sqlite:" + DB);
              var statement = connection.prepareStatement("SELECT name FROM trip_preset WHERE id=?")) {
@@ -134,5 +134,32 @@ class TripPresetHttpTest {
                 HttpResponse.BodyHandlers.ofString());
         assertEquals(200, response.statusCode());
         assertTrue(response.headers().firstValue("Access-Control-Allow-Methods").orElseThrow().contains("PUT"));
+    }
+
+    @Test void exposesGdanskNetworkWithConsistentGeometry() throws Exception {
+        var response = send("GET", "/networks/gdansk-v1", null);
+        assertEquals(200, response.statusCode());
+        var network = json.readTree(response.body());
+        assertTrue(network.get("nodes").size() > 100);
+        var nodes = new HashMap<String, tools.jackson.databind.JsonNode>();
+        for (var node : network.get("nodes")) nodes.put(node.get("id").asText(), node);
+        for (var edge : network.get("edges")) {
+            var start = nodes.get(edge.get("fromNodeId").asText());
+            var end = nodes.get(edge.get("toNodeId").asText());
+            assertNotNull(start);
+            assertNotNull(end);
+            assertTrue(edge.get("lengthM").asDouble() > 0);
+            assertTrue(edge.get("speedLimitMps").asDouble() > 0);
+            assertEquals(start.get("lon"), edge.get("geometry").get(0).get(0));
+            assertEquals(end.get("lat"), edge.get("geometry").get(1).get(1));
+        }
+    }
+
+    @Test void listsNetworkVersionsAndReturnsNotFoundForUnknownNetwork() throws Exception {
+        var response = send("GET", "/networks", null);
+        assertEquals(200, response.statusCode());
+        assertTrue(response.body().contains("gdansk-v1"));
+        assertTrue(response.body().contains("synthetic-v1"));
+        assertEquals(404, send("GET", "/networks/unknown", null).statusCode());
     }
 }

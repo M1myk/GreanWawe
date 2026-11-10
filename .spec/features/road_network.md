@@ -1,6 +1,6 @@
 # Road network
 
-Status: feature specification v0.2, draft for review; not implemented.
+Status: stage 4 implemented.
 
 ## Goal
 
@@ -49,3 +49,7 @@ Fields, units, validation and errors follow the [shared REST contract](../shared
 Prepared-data import, read API and map display. No road editor, geocoding or runtime whole-city download.
 
 Use these criteria for at least three meaningful automated tests for the feature. The implementation plan will identify concrete files and tools. Verify UI integration where applicable. Review proposed defaults in the [decision register](../decisions.md) before implementation.
+
+## Stage 4 scope
+
+Use a versioned OpenStreetMap road extract within approximate bounds 54.383–54.426 N and 18.559–18.635 E. Retain the synthetic fixture for existing saved trips. Generate a Flyway migration offline and serve the resulting graph through read-only endpoints. Straight edges connect consecutive OSM geometry nodes. Apply explicit one-way tags and roundabout defaults. The simplified graph excludes turn restrictions and conditional access rules. Unknown speed limits use a simulation default of 50 km/h. Render the network as an SVG in the existing React form without a new dependency. Endpoint validation continues to use directed reachability. Signal placement and simulation belong to later stages.

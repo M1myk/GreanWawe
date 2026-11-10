@@ -15,7 +15,7 @@ All signal phases, cycles and pedestrian requests are simulated by the backend. 
 
 ## Current status
 
-Stage 3 is implemented: saved-trip CRUD through REST, SQLite and React, with domain objects, transport DTOs, an explicit mapper, JPA persistence, transactional services, controllers and structured errors. Stage 2 health/CORS remains available. The included four-node scenario is explicitly synthetic and is not a Gdańsk map. Map import, vehicle simulation, traffic signals and algorithm comparison remain planned. Simulation defaults and the YELLOW-light rule still require review before execution is implemented.
+Stage 4 is implemented. GreenWave includes saved-trip CRUD, a versioned Gdańsk road graph in SQLite and a map for selecting trip endpoints. The synthetic test scenario remains available. Vehicle movement, simulated lights and algorithm comparison are planned.
 
 ## Planned MVP
 
@@ -36,9 +36,9 @@ Live GPS navigation, real signal control, traffic queues, multiple interacting v
 | Backend | REST, simulation, routing, validation, metrics | Java 21, Spring Boot 4.1.2, Maven |
 | Frontend | Map, forms, controls, animation and results | React 19.3.1, TypeScript 7.0.2, Vite 8.3.7; Tailwind CSS and Leaflet planned |
 | Database | Saved configurations, scenarios and results | SQLite through Xerial JDBC; no external database server |
-| Map | Road geometry and background | Prepared OpenStreetMap extract proposed |
+| Map | Road geometry and background | Prepared OpenStreetMap extract and local SVG road view |
 
-The backend is in `backend/`, the frontend in `frontend/`. Direct dependency versions are pinned in their manifests, with the frontend lockfile included. SQLite integration now uses Xerial JDBC 3.54.1.0, Hibernate community dialects 7.4.13.Final and Flyway 12.4.0 (Hibernate/Flyway managed by Spring Boot). Map and Tailwind dependencies remain deferred.
+The backend is in `backend/`, the frontend in `frontend/`. Direct dependency versions are pinned in their manifests, with the frontend lockfile included. SQLite integration now uses Xerial JDBC 3.54.1.0, Hibernate community dialects 7.4.13.Final and Flyway 12.4.0 (Hibernate/Flyway managed by Spring Boot). The map renders the stored graph as SVG without an external tile service. Tailwind remains deferred.
 
 ## How I am building the project
 
@@ -62,13 +62,13 @@ I remain responsible for scope, design decisions, understanding the solution and
 | 1. Requirements and specification | Layer boundaries, API, invariants and feature criteria | Draft prepared; review ongoing |
 | 2. Project setup | Separate Java/React projects, pinned dependencies, CORS and local setup | Implemented and verified |
 | 3. Saved trips | End-to-end CRUD with SQLite and a simple UI | Implemented and verified |
-| 4. Road network | Small Gdańsk extract, validated graph and map display | Planned |
+| 4. Road network | Small Gdańsk extract, validated graph and map display | Implemented |
 | 5. Baseline simulation | Clock, signals, vehicle physics and A* | Planned |
 | 6. GreenWave | Limited-observation routing and speed adaptation | Planned |
 | 7. Integration and verification | Controls, animation, results and reproducibility checks | Planned |
 | 8. Submission | Verified setup guide, GIF/MP4 demo and public GitHub repository | Planned |
 
-The [implementation plan](.spec/implementation_plan.md) gives more detail. Open decisions, including yellow-light behaviour and numerical defaults, are recorded in the [decision register](.spec/decisions.md).
+The [implementation plan](.spec/implementation_plan.md) gives more detail. The approved 30 m yellow-light rule and open numerical defaults are recorded in the [decision register](.spec/decisions.md).
 
 ## How AI is used
 
@@ -123,15 +123,15 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:5173`. The page should display **Connected to the GreenWave API.** The frontend calls the API directly across origins rather than using a development proxy, so this checks CORS too. Use **Retry connection** after restarting the API. Stop each server with Ctrl+C.
+Open `http://localhost:5173` to see the full-screen Gdańsk road map. Search for an imported street in **Skąd** or **Dokąd**, or focus a field and click near a road on the map. Blue A marks the origin and red B marks the destination. Stop each server with Ctrl+C.
 
-The saved-trip form uses the synthetic scenario. Choose n1 → n3 or n1 → n2, enter a name and save. Use Edit to load and update it; Delete asks for confirmation. Node n4 is isolated and demonstrates validation. Seed and numerical parameters are saved configuration values, not a running simulation.
+Open **Zapisane** to manage named trip presets. The saved-trip form opens the Gdańsk extract. Use **Pick start** and **Pick destination**, then click near road nodes or select their IDs from the lists. Enter a name and save. For a minimal example, switch to the synthetic scenario and choose n1 → n3 or n1 → n2. Use Edit to load and update it; Delete asks for confirmation. Node n4 is isolated and demonstrates validation. Seed and numerical parameters are saved configuration values, not a running simulation.
 
 ### 3. Run checks and build
 
 From `backend/`, run `mvn verify` for HTTP integration tests and the executable JAR. From `frontend/`, run `npm run typecheck` or `npm run build` (which also runs typecheck). The frontend build is written to `frontend/dist/`.
 
-Current automated coverage: 10 HTTP integration tests covering health/CORS, complete CRUD, nested validation and malformed JSON, directed reachability, pagination, concurrent/stale updates, migrations, foreign keys and reopening a persisted SQLite file. Browser checks cover connection states, creation, editing, validation and retrieval after a backend restart. Deletion is verified through HTTP tests and the empty list was checked in the browser. There are no simulation tests yet.
+Current automated coverage: 12 HTTP integration tests covering health/CORS, complete CRUD, nested validation and malformed JSON, directed reachability, pagination, concurrent/stale updates, migrations, foreign keys reopening a persisted SQLite file, network geometry and unknown network IDs. Browser checks cover connection states, creation, editing, validation and retrieval after a backend restart. Deletion is verified through HTTP tests and the empty list was checked in the browser. There are no simulation tests yet.
 
 ### Configuration
 
@@ -181,7 +181,9 @@ resources/db/migration/      Versioned SQLite schema and synthetic fixture
 
 Entities are not exposed over HTTP. Public preset versions start at 1; stale edits return 409 and retain the form so the user can reload deliberately. Configurations are independently serializable; future comparisons will own their own copies.
 
-Implemented endpoints are described in [OpenAPI](.spec/shared/openapi.yaml): health, scenario reads and full trip-preset CRUD. The broader Markdown contract also contains planned simulation endpoints, which do not exist yet.
+Implemented endpoints are described in [OpenAPI](.spec/shared/openapi.yaml): health, scenario reads, road-network reads and full trip-preset CRUD. The broader Markdown contract also contains planned simulation endpoints, which do not exist yet.
+
+See [road data provenance](docs/road-network-data.md) for the extract bounds, licence and graph limitations.
 
 ## Demonstration
 

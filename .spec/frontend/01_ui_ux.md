@@ -25,3 +25,9 @@ Use labels, visible focus and keyboard controls. Announce status changes rather 
 ## Saved-trip CRUD
 
 List saved names and update dates with pagination. Allow naming and saving the form, loading a preset, editing its name/parameters and deleting with UI confirmation. Deletion does not affect an active comparison's copied configuration. Conflicts offer a reload; failures retain edits. Verify the full UI → REST → SQLite flow.
+
+## Full-screen trip picker
+
+The landing view fills the viewport with the Gdańsk road map. A compact overlay contains origin and destination fields. Users can search the imported street names or focus a field and pick a nearby road node on the map. Origin and destination use distinct pin colors and labels. The landing view requires no trip name. Saved-trip management is available in a separate dialog. The picker uses the existing network API and introduces no new packages or migrations.
+
+The active endpoint is shown in the panel and in the map instructions. Either pin can be dragged with a mouse or touch and snaps to a nearby road node on release. Releasing away from a node or cancelling the gesture retains its previous position. Each field has a separate clear button that removes only its pin and activates that field for the next selection.

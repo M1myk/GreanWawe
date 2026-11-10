@@ -1,3 +1,4 @@
+import { RoadMap } from './RoadMap';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiError, request } from '../api/client';
@@ -87,7 +88,7 @@ export function TripPresets() {
   return <div className="workspace">
     <section aria-labelledby="form-title">
       <h2 id="form-title">{editing ? 'Edit saved trip' : 'Create saved trip'}</h2>
-      <p className="note">Synthetic test network: n1 → n2 → n3, n1 → n3. Node n4 is isolated. No map or simulation yet.</p>
+      <p className="note">Choose a start and destination on the map or from the node lists.</p>
       {error && <div role="alert" className="error"><p>{error.message}</p>
         <ul>{error.fields.map(field => <li key={field.field}>{field.field}: {field.message}</li>)}</ul>
         {error.status === 409 && editing && <button disabled={busy} onClick={() => void edit(editing.id)}>Reload saved version (discard edits)</button>}
@@ -100,6 +101,9 @@ export function TripPresets() {
           <label>Scenario<select value={config.scenarioId} onChange={event => setConfig(current => ({ ...current, scenarioId: event.target.value, startNodeId: '', destinationNodeId: '' }))}>
             {scenarios.map(scenario => <option key={scenario.id} value={scenario.id}>{scenario.name}</option>)}
           </select></label>
+          {details?.id === config.scenarioId && <RoadMap key={details.networkId} networkId={details.networkId}
+            start={config.startNodeId} destination={config.destinationNodeId}
+            onSelect={(field, id) => setConfig(current => ({ ...current, [field]: id }))} />}
           <div className="fields">
             <label>Start node<select required aria-invalid={!!fieldError('config.startNodeId')} value={config.startNodeId} onChange={event => setConfig(current => ({ ...current, startNodeId: event.target.value }))}>
               <option value="">Select start</option>{details?.nodes.map(node => <option key={node.id}>{node.id}</option>)}

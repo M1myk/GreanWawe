@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "GreenWave implemented API",
-    "version": "0.3.0",
-    "description": "Stage 3 CRUD. Simulation endpoints are planned in the Markdown contract and are not implemented."
+    "version": "0.4.0",
+    "description": "Implemented health, scenario reads, trip presets and versioned road-network reads. Simulation endpoints remain planned."
   },
   "servers": [
     {
@@ -502,6 +502,60 @@
           }
         }
       }
+    },
+    "/networks": {
+      "get": {
+        "operationId": "listNetworks",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkList"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/networks/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getNetwork",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoadNetwork"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Network not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -850,6 +904,155 @@
           "signals"
         ],
         "additionalProperties": false
+      },
+      "NetworkBounds": {
+        "type": "object",
+        "properties": {
+          "south": {
+            "type": "number"
+          },
+          "west": {
+            "type": "number"
+          },
+          "north": {
+            "type": "number"
+          },
+          "east": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "south",
+          "west",
+          "north",
+          "east"
+        ]
+      },
+      "NetworkSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "bounds": {
+            "$ref": "#/components/schemas/NetworkBounds"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "name",
+          "bounds"
+        ]
+      },
+      "NetworkList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NetworkSummary"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "RoadNode": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "lat": {
+            "type": "number"
+          },
+          "lon": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "lat",
+          "lon"
+        ]
+      },
+      "RoadEdge": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fromNodeId": {
+            "type": "string"
+          },
+          "toNodeId": {
+            "type": "string"
+          },
+          "lengthM": {
+            "type": "number"
+          },
+          "speedLimitMps": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "geometry": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "required": [
+          "id",
+          "fromNodeId",
+          "toNodeId",
+          "lengthM",
+          "speedLimitMps",
+          "name",
+          "geometry"
+        ]
+      },
+      "RoadNetwork": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoadNode"
+            }
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoadEdge"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "nodes",
+          "edges"
+        ]
       }
     }
   }

@@ -13,7 +13,7 @@ export interface Scenario { id: string; name: string; version: string; networkId
 export interface ScenarioDetails extends Scenario { nodes: { id: string; lat: number; lon: number }[] }
 export interface FieldError { field: string; message: string }
 export const defaultConfig: TripConfig = {
-  scenarioId: 'synthetic-v1', startNodeId: 'n1', destinationNodeId: 'n3', randomSeed: 42,
+  scenarioId: 'gdansk-v1', startNodeId: '', destinationNodeId: '', randomSeed: 42,
   vehicle: { maxSpeedMps: 13.89, accelerationMps2: 2, brakingMps2: 3 },
   navigation: { observationRangeM: 500, decisionIntervalSeconds: 1 }, maxDurationSeconds: 1800,
 };
