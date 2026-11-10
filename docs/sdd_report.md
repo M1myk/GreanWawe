@@ -99,3 +99,11 @@ AI added background panning, cursor-anchored wheel zoom, two-pointer pinch zoom,
 ## Free pins and car access
 
 The full-screen picker preserves arbitrary pin locations within the coverage circle and shows a distinct car access marker for the nearest eligible graph node. Directed reachability accounts for the other selected endpoint. Saved-trip node IDs remain compatible. The production build, diff check and four direct checks of the access-node algorithm passed. Parking availability and pedestrian movement are outside the simulation scope.
+
+## Parking and residential access
+
+AI generated Gdańsk v2 from the existing extracts, added access filters to the importer and selected v2 for new trips. The importer tests covered a one-way parking aisle, a private road, a gate and a permissive driveway. Three importer tests, 12 backend tests, the frontend build and SQLite foreign key checks passed. The prior graph remains available for saved v1 presets.
+
+## Eastern road connections and route preview
+
+AI identified that the previous eastern boundary cut off Łozy. The v3 migration adds the missing eastern roads, and the map previews a directed car route between the selected access nodes. The frontend build and 14 backend tests passed. The regression test checks that the route from Łozy to Aleksandra Zelwerowicza crosses the former boundary and that every geometry segment corresponds to a directed graph edge. API tests also cover missing and disconnected endpoints. The updated line was not checked in a browser.

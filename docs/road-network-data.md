@@ -9,3 +9,13 @@ Run `python3 scripts/import-road-network.py extract.osm [more.osm ...]` to gener
 The importer selects primary, secondary, tertiary, their links, residential and unclassified roads. It excludes explicit private or prohibited vehicle access and segments with endpoints outside the bounds. Explicit one-way directions and roundabout defaults affect directed reachability. It uses a simulation default of 50 km/h where a numeric speed limit is unavailable. The graph omits turn restrictions, conditional access and roads outside the selected classes. The map shows the imported roads and a selection of road names.
 
 Signal programs and pedestrian events will be defined in the simulation stage.
+
+## Gdańsk v2 access roads
+
+V4 adds a separate snapshot with 14,384 nodes and 25,733 directed edges from the same dated OSM extracts. It adds service roads, parking aisles and living streets. The importer follows the most specific motorcar access tag and omits conditional or restricted access, unmarked individual driveways, emergency roads and barrier nodes without explicit permission. The defaults for missing speed limits are 15 km/h on service roads and 20 km/h on living streets. Road tags govern this snapshot. Parking polygons and live gate or space availability are outside its data model.
+
+New map selections use v2. Previously saved v1 scenarios still resolve to their original graph. Reproduce V4 with `python3 scripts/import-road-network.py --version v2 extract.osm [more.osm ...]`. [OpenStreetMap service road tags](https://wiki.openstreetmap.org/wiki/Service_road)
+
+## Gdańsk v3 eastern extension
+
+V5 extends the eastern edge to 18.652 E. Four additional OpenStreetMap XML extracts were downloaded on 2026-11-10 to complete the Łozy corridor and neighboring streets, including Aleksandra Zelwerowicza. The graph has 29,433 directed edges. New map selections use v3. The route preview minimizes imported edge travel time and uses ordered road geometry. Existing access filters apply. Turn restrictions and conditional access remain outside the model. [OpenStreetMap map API](https://wiki.openstreetmap.org/wiki/API_v0.6)

@@ -30,6 +30,23 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   const [locations, setLocations] = useState<Partial<Record<Endpoint, { id: string; point: Point }>>>({});
   const [drag, setDrag] = useState<PinDrag>();
   const [hint, setHint] = useState('');
+  const [preview, setPreview] = useState<{ key: string; geometry?: [number, number][]; lengthM?: number }>();
+  const routeKey = JSON.stringify([networkId, start, destination]);
+  const route = preview?.key === routeKey ? preview : undefined;
+
+  useEffect(() => {
+    if (!fullScreen || !start || !destination) return;
+    const controller = new AbortController();
+    const query = new URLSearchParams({ start, destination });
+    void request<{ geometry: [number, number][]; lengthM: number }>(
+      '/networks/' + encodeURIComponent(networkId) + '/route?' + query, { signal: controller.signal },
+    ).then(result => {
+      if (!controller.signal.aborted) setPreview({ key: routeKey, ...result });
+    }).catch(() => {
+      if (!controller.signal.aborted) setPreview({ key: routeKey });
+    });
+    return () => controller.abort();
+  }, [fullScreen, networkId, start, destination, routeKey]);
   function activate(next: Endpoint) {
     setHint('');
     setField(next);
@@ -129,6 +146,10 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
     })}
     <p role="status">{error ? 'Nie udało się wczytać mapy.' : !drawing ? 'Wczytywanie mapy…'
       : hint || (field === 'startNodeId' ? 'Wybierasz A · start' : 'Wybierasz B · cel')}</p>
+    {start && destination && <p role="status">
+      {!route ? 'Wyznaczanie trasy…' : route.lengthM === undefined ? 'Nie udało się wyznaczyć dojazdu.'
+        : `Trasa samochodowa · ${(route.lengthM / 1000).toLocaleString('pl', { maximumFractionDigits: 2 })} km`}
+    </p>}
     {drawing && !error && <p className="map-tip">Kliknij miejsce w zaznaczonym obszarze, aby ustawić pinezkę. Przeciągnij tło, aby przesunąć mapę.</p>}
     {error && <button type="button" onClick={() => { setError(false); setRetry(value => value + 1); }}>Spróbuj ponownie</button>}
   </section>;
@@ -213,6 +234,13 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
         <rect x={bounds.x} y={bounds.y} width={bounds.width} height={bounds.height}
           fill="none" stroke="#1462bc" strokeWidth="1" vectorEffect="non-scaling-stroke" />
       </g>}
+      {geographic && route?.geometry && <polyline
+        points={route.geometry.map(([lon, lat]) => {
+          const point = project({ id: '', lat, lon });
+          return `${point.x},${point.y}`;
+        }).join(' ')}
+        fill="none" stroke="#176be0" strokeWidth="5" strokeLinecap="round"
+        strokeLinejoin="round" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
       {[start, destination].map((id, index) => {
         const endpoint = index ? 'destinationNodeId' : 'startNodeId';
         const dragging = drag?.field === endpoint ? drag : undefined;

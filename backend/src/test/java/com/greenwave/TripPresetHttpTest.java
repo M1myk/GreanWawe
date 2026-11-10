@@ -162,4 +162,33 @@ class TripPresetHttpTest {
         assertTrue(response.body().contains("synthetic-v1"));
         assertEquals(404, send("GET", "/networks/unknown", null).statusCode());
     }
+
+    @Test void previewsRoadRouteAcrossFormerEasternBoundary() throws Exception {
+        var response = send("GET", "/networks/gdansk-v3/route?start=301675292&destination=301675209", null);
+        assertEquals(200, response.statusCode(), response.body());
+        var route = json.readTree(response.body());
+        assertTrue(route.get("lengthM").asDouble() > 0);
+        var geometry = route.get("geometry");
+        assertTrue(geometry.size() > 2);
+        var jdbc = new JdbcTemplate(dataSource);
+        for (int i = 1; i < geometry.size(); i++) {
+            var from = geometry.get(i - 1);
+            var to = geometry.get(i);
+            assertEquals(1, jdbc.queryForObject("""
+                    SELECT EXISTS (
+                      SELECT 1 FROM road_edge e JOIN road_node a
+                        ON a.network_id=e.network_id AND a.node_id=e.from_node_id
+                      JOIN road_node b ON b.network_id=e.network_id AND b.node_id=e.to_node_id
+                      WHERE e.network_id='gdansk-v3' AND a.lon=? AND a.lat=? AND b.lon=? AND b.lat=?
+                    )
+                    """, Integer.class, from.get(0).asDouble(), from.get(1).asDouble(),
+                    to.get(0).asDouble(), to.get(1).asDouble()));
+        }
+        assertTrue(geometry.get(geometry.size() - 1).get(0).asDouble() > 18.635);
+    }
+
+    @Test void routePreviewRejectsDisconnectedAndUnknownEndpoints() throws Exception {
+        assertEquals(422, send("GET", "/networks/synthetic-v1/route?start=n3&destination=n1", null).statusCode());
+        assertEquals(404, send("GET", "/networks/synthetic-v1/route?start=n1&destination=missing", null).statusCode());
+    }
 }

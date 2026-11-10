@@ -38,6 +38,11 @@ public class NetworkController {
         return new Network(summary.id(), summary.version(), nodes, edges);
     }
 
+    @GetMapping("/{id}/route")
+    public RoadRoute route(@PathVariable String id, @RequestParam String start, @RequestParam String destination) {
+        return RoadRoute.between(get(id), start, destination);
+    }
+
     private static List<Double> coordinate(Node node) { return List.of(node.lon(), node.lat()); }
 
     public record Bounds(double south, double west, double north, double east) { }

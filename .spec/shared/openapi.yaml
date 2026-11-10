@@ -556,6 +556,76 @@
           }
         }
       }
+    },
+    "/networks/{id}/route": {
+      "get": {
+        "operationId": "getRoadRoute",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "destination",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Directed road route",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "geometry",
+                    "lengthM"
+                  ],
+                  "properties": {
+                    "geometry": {
+                      "type": "array",
+                      "items": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
+                      }
+                    },
+                    "lengthM": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Network or endpoint not found"
+          },
+          "422": {
+            "description": "No directed road route"
+          }
+        }
+      }
     }
   },
   "components": {

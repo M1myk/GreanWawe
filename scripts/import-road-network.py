@@ -1,16 +1,31 @@
-"""Convert an OSM map XML extract to the immutable Gdansk v1 SQL migration."""
+"""Convert an OSM XML extract to a versioned Gdansk road migration."""
 
+import argparse
 import math
 import re
-import sys
 import xml.etree.ElementTree as ET
 
-NETWORK = 'gdansk-v1'
 BOUNDS = (54.383, 18.559, 54.426, 18.635)
 ROAD_TYPES = {
     'primary', 'secondary', 'tertiary', 'primary_link', 'secondary_link',
     'tertiary_link', 'residential', 'unclassified',
 }
+
+
+ACCESS_KEYS = ('motorcar', 'motor_vehicle', 'vehicle', 'access')
+OPEN_ACCESS = {'yes', 'permissive', 'designated'}
+
+
+def car_access(tags):
+    return next((tags[key] for key in ACCESS_KEYS if key in tags), '')
+
+
+def conditional_access(tags):
+    return any(key + ':conditional' in tags for key in ACCESS_KEYS)
+
+
+def tags_of(element):
+    return {tag.attrib['k']: tag.attrib['v'] for tag in element.findall('tag')}
 
 
 def distance(a, b):
@@ -26,28 +41,55 @@ def rows(table, values):
         yield 'INSERT INTO ' + table + ' VALUES\n' + ',\n'.join(values[offset:offset + 200]) + ';'
 
 
-def convert(elements):
+def convert(elements, version='v1'):
+    network = 'gdansk-' + version
+    expanded = version != 'v1'
+    south, west, north, east = BOUNDS
+    if version == 'v3':
+        east = 18.652
+    road_types = ROAD_TYPES | {'service', 'living_street'} if expanded else ROAD_TYPES
+    blocked_nodes = set()
+    if expanded:
+        for node in (item for item in elements if item.tag == 'node'):
+            tags = tags_of(node)
+            access = car_access(tags)
+            barrier = tags.get('barrier')
+            if conditional_access(tags) or (access and access not in OPEN_ACCESS) or (
+                barrier and barrier not in {'no', 'cattle_grid', 'toll_booth', 'border_control'}
+                and access not in OPEN_ACCESS
+            ):
+                blocked_nodes.add(int(node.attrib['id']))
     coordinates = {int(node.attrib['id']): (float(node.attrib['lat']), float(node.attrib['lon']))
                    for node in (item for item in elements if item.tag == 'node')}
     used = set()
     edges = []
     for way in (item for item in elements if item.tag == 'way'):
-        tags = {tag.attrib['k']: tag.attrib['v'] for tag in way.findall('tag')}
-        access = next((tags[key] for key in ('motorcar', 'motor_vehicle', 'vehicle', 'access')
-                       if key in tags), '')
-        if tags.get('highway') not in ROAD_TYPES or access in {'no', 'private'}:
+        tags = tags_of(way)
+        access = car_access(tags)
+        road_type = tags.get('highway')
+        if road_type not in road_types or access in {'no', 'private'}:
             continue
+        if expanded:
+            if conditional_access(tags) or (access and access not in OPEN_ACCESS):
+                continue
+            if tags.get('area') == 'yes' or tags.get('service') in {'emergency_access', 'slipway'}:
+                continue
+            if tags.get('service') == 'driveway' and access not in OPEN_ACCESS:
+                continue
         ids = [int(node.attrib['ref']) for node in way.findall('nd')]
         speed = tags.get('maxspeed', '')
-        speed = int(speed) if re.fullmatch(r'[1-9][0-9]{0,2}', speed) else 50
+        default_speed = {'service': 15, 'living_street': 20}.get(road_type, 50)
+        speed = int(speed) if re.fullmatch(r'[1-9][0-9]{0,2}', speed) else default_speed
         direction = tags.get('oneway', 'yes' if tags.get('junction') == 'roundabout' else 'no')
         if direction in {'reversible', 'alternating'}:
             continue
         for index, (a, b) in enumerate(zip(ids, ids[1:])):
             if a not in coordinates or b not in coordinates:
                 raise ValueError(f"Missing node in way {way.attrib['id']}")
-            if not all(BOUNDS[0] <= coordinates[node][0] <= BOUNDS[2]
-                       and BOUNDS[1] <= coordinates[node][1] <= BOUNDS[3] for node in (a, b)):
+            if not all(south <= coordinates[node][0] <= north
+                       and west <= coordinates[node][1] <= east for node in (a, b)):
+                continue
+            if a in blocked_nodes or b in blocked_nodes:
                 continue
             length = distance(coordinates[a], coordinates[b])
             if length < 0.001:
@@ -60,23 +102,26 @@ def convert(elements):
                 directions.append((b, a, 'r'))
             name = tags.get('name', '').replace("'", "''")
             for start, end, suffix in directions:
-                edges.append(f"('{NETWORK}','{int(way.attrib['id'])}-{index}-{suffix}','{start}','{end}',{length:.6f},{speed / 3.6:.6f},'{name}')")
+                edges.append(f"('{network}','{int(way.attrib['id'])}-{index}-{suffix}','{start}','{end}',{length:.6f},{speed / 3.6:.6f},'{name}')")
     if not edges:
         raise ValueError('No eligible road edges')
     yield '-- © OpenStreetMap contributors, ODbL 1.0. https://www.openstreetmap.org/copyright'
-    yield f"INSERT INTO road_network VALUES ('{NETWORK}','v1','Gdańsk road extract');"
-    yield from rows('road_node', [f"('{NETWORK}','{node}',{coordinates[node][0]},{coordinates[node][1]})"
+    yield f"INSERT INTO road_network VALUES ('{network}','{version}','Gdańsk road extract');"
+    yield from rows('road_node', [f"('{network}','{node}',{coordinates[node][0]},{coordinates[node][1]})"
                                   for node in sorted(used)])
-    yield "ALTER TABLE road_edge ADD COLUMN name TEXT NOT NULL DEFAULT '';"
+    if not expanded:
+        yield "ALTER TABLE road_edge ADD COLUMN name TEXT NOT NULL DEFAULT '';"
     yield from rows('road_edge', edges)
-    yield f"INSERT INTO scenario VALUES ('{NETWORK}','v1','{NETWORK}','Gdańsk road extract');"
+    yield f"INSERT INTO scenario VALUES ('{network}','{version}','{network}','Gdańsk road extract');"
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        raise SystemExit('Usage: python3 scripts/import-road-network.py extract.osm [more.osm ...]')
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--version', choices=('v1', 'v2', 'v3'), default='v1')
+    parser.add_argument('extracts', nargs='+')
+    args = parser.parse_args()
     elements = {}
-    for filename in sys.argv[1:]:
+    for filename in args.extracts:
         for element in ET.parse(filename).getroot():
             if element.tag not in {'node', 'way'}:
                 continue
@@ -84,5 +129,5 @@ if __name__ == '__main__':
             previous = elements.get(key)
             if previous is None or int(element.get('version', 0)) > int(previous.get('version', 0)):
                 elements[key] = element
-    migration = list(convert([elements[key] for key in sorted(elements)]))
+    migration = list(convert([elements[key] for key in sorted(elements)], args.version))
     print('\n'.join(migration))

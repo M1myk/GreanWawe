@@ -53,3 +53,11 @@ Use these criteria for at least three meaningful automated tests for the feature
 ## Stage 4 scope
 
 Use a versioned OpenStreetMap road extract within approximate bounds 54.383–54.426 N and 18.559–18.635 E. Retain the synthetic fixture for existing saved trips. Generate a Flyway migration offline and serve the resulting graph through read-only endpoints. Straight edges connect consecutive OSM geometry nodes. Apply explicit one-way tags and roundabout defaults. The simplified graph excludes turn restrictions and conditional access rules. Unknown speed limits use a simulation default of 50 km/h. Render the network as an SVG in the existing React form without a new dependency. Endpoint validation continues to use directed reachability. Signal placement and simulation belong to later stages.
+
+## Car access roads
+
+Gdańsk v2 adds mapped service roads, parking aisles and living streets. Include private-property roads with explicit public or permissive motorcar access. Exclude restricted access, conditional access, emergency-only roads, and barriers without explicit car permission. Exclude unmarked individual driveways. Select access nodes through the same directed graph. A parking polygon alone cannot supply a drivable connection. Existing presets retain their original network version.
+
+## Road route preview and eastern extension
+
+Gdańsk v3 extends the graph east to 18.652 E to include the rest of Łozy and nearby connections. Existing v1 and v2 presets keep their network versions. For two selected car access nodes, GET /api/v1/networks/{id}/route returns an ordered road geometry and total distance. The preview minimizes travel time at the imported edge speeds and respects edge direction. Identical endpoints return a zero-length route. Unknown endpoints return 404 and disconnected endpoints return 422. Display the route between road access markers. Keep the free pin at the requested location.
