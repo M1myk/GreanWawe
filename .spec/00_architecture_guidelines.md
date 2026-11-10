@@ -29,3 +29,11 @@ The MVP uses one backend instance and one local operator. Distributed sessions a
 A prepared OpenStreetMap extract supplies a directed graph with geometry, directions and speed limits. Map tiles and routing data are separate. Do not delegate routing to an external API. Record source, acquisition date, licence, attribution and transformations with the dataset; verify tile-provider terms before configuration.
 
 All signals, phase programs and pedestrian events are defined by the simulation scenario. No live controllers, ITS feeds or measured signal timings are integrated. OpenStreetMap data does not supply runtime signal phases.
+
+## Implemented stage-2 baseline
+
+Java 21/Spring Boot 4.1.2 and React 19.3.1/TypeScript 7.0.2/Vite 8.3.7 are now pinned. See features/project_setup.md for the authorized dependency list. Database, ORM, map and Tailwind remain future proposals rather than installed dependencies.
+
+## Implemented stage-3 layers
+
+trip/domain holds immutable values; trip/api/dto holds transport contracts; trip/service holds transactional rules and an explicit mapper; trip/persistence holds the JPA entity/repository. scenario has domain, api/dto, service and persistence packages for read-only fixture access. shared/api centralizes errors. No unused simulation classes are created. SQLite/JPA uses Hibernate community dialects 7.4.13.Final, Xerial JDBC 3.54.1.0 and Flyway 12.4.0; Boot manages Hibernate/Flyway versions. Compatibility was checked against [Hibernate dialect documentation](https://docs.hibernate.org/stable/core/dialect/), [Flyway SQLite documentation](https://documentation.red-gate.com/flyway/reference/database-driver-reference/sqlite) and [Xerial JDBC](https://github.com/xerial/sqlite-jdbc), then verified through migrations and real SQLite tests.

@@ -95,3 +95,11 @@ trip-presets are named configurations independent of active simulations.
 | DELETE /trip-presets/{id} | 204; missing resource 404 |
 
 Trimmed name length is 1–80 characters; duplicates are allowed. config uses the comparison-create structure and validation. version is a positive integer starting at 1. Editing/deleting a preset never changes comparisons, each of which owns a copied configuration. Launching a preset submits that copy to POST /comparisons.
+
+## Implemented setup endpoint
+
+GET /api/v1/health returns 200 with {"status":"UP","application":"greenwave"}. This availability endpoint is implemented in stage 2; business endpoints above remain planned. CORS now allows GET, POST, PUT, DELETE and OPTIONS for configured origins and exposes Location.
+
+## Stage-3 implemented contract
+
+The machine-readable contract for implemented endpoints is [openapi.yaml](openapi.yaml). Scenario detail currently returns id/version/name/networkId/networkVersion, four nodes as {id,lat,lon}, and an empty signals array for the synthetic fixture. No real map or signal program is claimed. CRUD validates numeric bounds, integer seed, tick interval, scenario membership and directed reachability. Physical signal-stopping feasibility is deferred to the execution stage, pending resolution of YELLOW semantics. Unknown JSON properties and fractional integer fields return 400; semantic validation returns 422. Unsupported HTTP methods return 405. Unexpected failures use the same structured error shape without leaking exception details.

@@ -1,6 +1,6 @@
 # SDD implementation plan
 
-Status: roadmap for review. The current task covers documentation only.
+Status: stages 2 and 3 completed and verified. Map and simulation stages remain planned.
 
 1. Review the MVP and open decisions; agree on map scope and algorithm parameters in the specification.
 2. Create separate backend/frontend skeletons, pin compatible dependencies, configure CORS and document local setup.
@@ -14,3 +14,7 @@ Status: roadmap for review. The current task covers documentation only.
 Before each stage, read relevant specifications, identify gaps and present affected files, scope and checks. Use the [SDD workflow](sdd_workflow.md): Interview Mode, a concrete plan and its acceptance. A direct request to execute an accepted plan is sufficient authorization. This roadmap alone does not authorize implementing the entire application.
 
 Verify and pin dependencies before using them. After implementation, review the diff, relevant tests and documentation consistency. Keep the solution within a realistic, small MVP.
+
+Stage 2 delivered: Java/React skeletons, pinned manifests and npm lockfile, health endpoint, explicit configurable CORS, connection/retry UI and local setup guide. Maven verification passed 3 tests; frontend typecheck/build and browser connection/failure/recovery checks passed. No stage-3 features were implemented.
+
+Stage 3 delivered a complete working preset module and synthetic scenario, SQLite/Flyway integration, JPA entity/repository, domain and DTO models, mapper, service, controller, validation/errors and React CRUD. The user approved the synthetic fixture; Gdańsk import remains stage 4.

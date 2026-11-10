@@ -29,3 +29,45 @@ The ignore rules were checked against 17 ignored/retained path examples in a tem
 The user requested English for all project documentation and code comments. Updated the agent instruction, translated maintained project documentation and added a root README describing the idea, planned layers, current status, SDD stages and actual versus planned AI assistance. Original private conversation exports remain local historical records, not maintained project documentation.
 
 Further report entries must describe real work, human decisions, manual interventions, diff reviews and executed checks. Keep the short AI-use section in README consistent with this report.
+
+## 2026-11-10 — stage 2: executable project setup
+
+The user authorized the described setup stage. AI read current specifications and environment, created a dedicated chore/project-setup branch, recorded a bounded specification, then implemented Java/Spring Boot and React/Vite skeletons. The backend provides a typed health response and configurable explicit-origin CORS. The frontend checks the actual cross-origin API, times out safely, validates the response and offers retry without pretending the simulation exists.
+
+Dependency versions were checked through the official package registry and compatibility documentation. Existing environment: Java 21.0.11, Maven 3.9.16, Node 24.14.1 and npm 11.11.0. No system-wide installation, database, CRUD or simulation was added.
+
+Verification performed:
+
+- `mvn verify`: BUILD SUCCESS; 3 HTTP integration tests, zero failures/errors/skips. Tests use a real embedded server and cover health JSON, configured custom-origin preflight and denied unapproved origin.
+- `npm install` and `npm run build`: successful dependency installation, strict TypeScript check and Vite production build. npm reported zero vulnerabilities at installation time.
+- Chrome at localhost:5173 displayed Connected to the GreenWave API. After stopping the owned API process and clicking Retry, it displayed API unavailable. Restarting the API and retrying restored Connected.
+- Local server execution and dependency downloads required sandbox escalation; these were allowed. No automatic approval rejection occurred.
+
+README now contains setup and verification commands and distinguishes completed setup from planned business features. The yellow-light modelling conflict is still open and unrelated to this stage. No manual user code correction occurred; no commit or publication was performed.
+
+Final setup review: npm ci --offline followed by npm run build also passed from frontend/, confirming lockfile installation. Documentation links and manifest/lockfile consistency passed. git diff --check passed; generated build/dependency folders are ignored and private archives are not tracked. One attempted npm ci from the repository root failed because package.json is intentionally inside frontend/; it was rerun successfully in the correct directory.
+
+## 2026-11-10 — stage 3: layered saved-trip CRUD
+
+The user authorized the next stage with full domain, DTO, entity, service, repository and controller structure. Before implementation, a concrete plan and dependency list were added to features/trip_presets.md. The user explicitly approved a synthetic four-node scenario, deferring the Gdańsk extract to stage 4.
+
+Implemented immutable domain values, separate request/response DTOs, an explicit mapper, JPA entity/repository, transactional service, controllers, structured exceptions and central advice. Added read-only scenario layers and a recursive directed-reachability query. Flyway migrations create the minimal reference schema and trip_preset, then insert a clearly labelled synthetic fixture. Hibernate schema updates are disabled. JDBC bundles SQLite; no separate database installation is required.
+
+React now provides creation, paginated reading, editing, deletion confirmation, numeric configuration, field-level feedback, conflict recovery and cancellation/timeouts. Editing failures preserve form values. OpenAPI documents only implemented endpoints; simulation remains a draft in the broader contract.
+
+### Findings and corrections
+
+Initial CRUD tests exposed a nullable optimistic-version getter unboxing before insert. Changed the entity getter to retain nullable Long during new-entity detection; public responses still expose one-based versions. Reran the tests successfully. Tightened JSON parsing for fractional integer fields and unknown properties. Normalized names in the service and used fixed-precision UTC timestamps for stable ordering. Avoided exposing entities or domain configuration objects as HTTP responses.
+
+A test JAR was rebuilt while its older instance was running, causing a class-loading error during that old instance's shutdown. Restarted with the final artifact and verified persistence; README now instructs stopping a running JAR before rebuilding. Commands accidentally invoked from the repository root were rerun from the correct backend/frontend directories (or with explicit project paths). No application failures were concealed.
+
+### Actual verification
+
+- Maven verify: 10 tests, zero failures/errors/skips (3 existing health/CORS and 7 new CRUD/scenario/database integration tests). Coverage includes nested validation, malformed/unknown JSON, integer constraints, unreachable and identical endpoints, pagination, concurrent/stale edits, FK enforcement, migration history and reopening a file database.
+- Frontend typecheck and Vite production build passed after the final UI changes.
+- Chrome on a separate test origin created and edited a trip, displayed version 2, rejected isolated node n4 while preserving the form, and retrieved the valid saved trip after page reload and backend restart.
+- DELETE of the owned disposable test trip was verified through HTTP; the empty list was then confirmed in Chrome. The browser's final deletion-confirmation action was not exercised.
+- Existing user servers on 8080/5173 were not stopped. Browser checks used 8081/5174 and an isolated temporary SQLite file.
+- Documentation links, OpenAPI internal references and git diff --check passed. No external OpenAPI conformance validator or frontend automation framework was installed; do not present structural reference checks as full schema conformance testing.
+
+Work is on feat/trip-presets. No commit, push, publication or simulation implementation was performed. PRE-03's future comparison-copy behaviour cannot yet be exercised because comparisons are not implemented. Manual user code intervention and a successful-test screenshot were not supplied; this report records text test results without inventing either artifact.
