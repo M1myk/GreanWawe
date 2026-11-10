@@ -64,3 +64,12 @@ fieldset { border: 0; margin: 0; padding: 0; }
 .map-controls span { background: white; color: #14519a; padding: 4px 9px; border-radius: 6px; font-size: .78rem; }
 .map-controls button { width: 44px; height: 44px; padding: 0; background: white; color: #17352c; font-size: 1.5rem; box-shadow: 0 1px 5px #16372a40; }
 @media (max-width: 600px) { .map-controls { top: 12px; bottom: auto; } }
+
+.map-surface > .road-canvas { touch-action: none; user-select: none; cursor: grab; }
+.map-surface > .road-canvas:active { cursor: grabbing; }
+@media (min-width: 1200px) {
+  .route-panel { width: clamp(440px, 29vw, 560px); padding: 22px; }
+  .route-panel header { font-size: 1.2rem; }
+  .endpoint-field label { grid-template-columns: 28px 56px minmax(0, 1fr); }
+  .endpoint-field input { padding: 12px; font-size: 1.05rem; }
+}

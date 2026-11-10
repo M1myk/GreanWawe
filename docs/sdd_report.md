@@ -91,3 +91,11 @@ AI added pointer dragging, independent clear buttons, and an explicit active end
 ## Wider map and coverage overlay
 
 AI added visible OpenStreetMap tiles, zoom controls and a coverage overlay around the existing graph. The frontend build and diff check passed. A browser check confirmed that road labels, greenery, and the coastline rendered, that zoom in and out changed and restored the viewport, and that street selection still displayed a pin. The blue circle approximates coverage and the thin rectangle marks the imported graph bounds.
+
+## Map navigation gestures
+
+AI added background panning, cursor-anchored wheel zoom, two-pointer pinch zoom, and wider endpoint controls on large displays. The production build and diff check passed. Desktop browser checks confirmed dragging changed the view without adding a pin, wheel zoom changed the scale, and the panel measured 440 px on the test display. Touch gestures were not exercised on a physical phone.
+
+## Free pins and car access
+
+The full-screen picker preserves arbitrary pin locations within the coverage circle and shows a distinct car access marker for the nearest eligible graph node. Directed reachability accounts for the other selected endpoint. Saved-trip node IDs remain compatible. The production build, diff check and four direct checks of the access-node algorithm passed. Parking availability and pedestrian movement are outside the simulation scope.
