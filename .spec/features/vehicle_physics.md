@@ -14,7 +14,7 @@ Definitions: [backend models](../backend/01_domain_models.md), [database](../dat
 
 ## Business invariants
 
-INV-04, INV-05 and INV-09. Respect stop lines, speed limits and edge positions. Freeze metrics after arrival; YELLOW stopping feasibility remains an open issue.
+INV-04, INV-05 and INV-09. Respect stop lines, speed limits and edge positions. Freeze metrics after arrival; Validate braking feasibility outside the 30 m YELLOW threshold.
 
 Also apply the [shared invariants](../shared/02_business_invariants.md).
 

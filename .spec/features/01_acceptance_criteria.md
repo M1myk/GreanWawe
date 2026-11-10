@@ -8,7 +8,7 @@ Verify behaviour rather than implementation details. Feature specifications prov
 | AC-02 | No directed route / prepare comparison / API 422 and readable error |
 | AC-03 | READY / Start, Pause, Resume / time advances only in RUNNING |
 | AC-04 | Same seed, configuration and versions / run at 1× and 5× / identical metrics |
-| AC-05 | Closing signal and feasible stopping distance / approach / stop before line; resolve YELLOW conflict first |
+| AC-05 | Closing signal and feasible stopping distance / approach / stop before the line when the YELLOW approach exceeds 30 m |
 | AC-06 | Reachable green phase / GreenWave selects speed / limits and physics are respected |
 | AC-07 | Same observation, different hidden future / planner decision / identical choice |
 | AC-08 | Alternative before a junction / replan / current edge is preserved |

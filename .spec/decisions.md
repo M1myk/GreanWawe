@@ -29,7 +29,7 @@ These details are drafts, not previously approved user decisions. Approval of th
 
 Feature-level models, contracts and full Given–When–Then scenarios were missing and have been added under features/. Draft versus approved status is now explicit.
 
-**Unresolved conflict:** the proposed rule forbids entering from the beginning of YELLOW. A vehicle can be too close to stop within the braking limit when that phase begins. Merely checking YELLOW duration does not resolve this. Before implementing that behaviour, agree on a YELLOW entry rule or an explicit simplified model. Position clamping must not conceal discontinuous physics. This remains open, not an approved business-rule change.
+**Approved YELLOW threshold:** a moving vehicle at most 30 m from the stop line along its route may enter while YELLOW remains active. Farther away, it must stop. RED prohibits new entry. See [simulation rules](backend/02_simulation_rules.md) for when the decision is made and how approach feasibility is checked.
 
 ## Stage 2 dependency and configuration decision
 
@@ -41,4 +41,8 @@ Compatibility references checked during setup: [Spring Boot requirements](https:
 
 ## Stage 3 authorization
 
-The user requested the next stage with complete domain/DTO/entity/controller/service/repository structure. A synthetic four-node scenario was explicitly accepted, with Gdańsk deferred to stage 4. Adopt the preset numerical validation bounds for saved configurations only; simulation behaviour and YELLOW rules remain unapproved. Flyway and Hibernate use Boot-managed versions with the community SQLite dialect; pin Xerial JDBC at 3.54.1.0. No external DB server is installed. The concrete plan is in features/trip_presets.md.
+The user requested the next stage with complete domain/DTO/entity/controller/service/repository structure. A synthetic four-node scenario was explicitly accepted, with Gdańsk deferred to stage 4. Adopt the preset numerical validation bounds for saved configurations only; this stage did not approve simulation behaviour. Flyway and Hibernate use Boot-managed versions with the community SQLite dialect; pin Xerial JDBC at 3.54.1.0. No external DB server is installed. The concrete plan is in features/trip_presets.md.
+
+## Stage 4 road extract
+
+Use the versioned `gdansk-v1` OpenStreetMap road extract and a local SVG renderer. The bounding rectangle is an approximate interpretation of the reference screenshot. Dataset generation, road-class filters, direction handling and limitations are documented in [road data provenance](../docs/road-network-data.md).

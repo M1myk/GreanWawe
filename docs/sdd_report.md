@@ -71,3 +71,39 @@ A test JAR was rebuilt while its older instance was running, causing a class-loa
 - Documentation links, OpenAPI internal references and git diff --check passed. No external OpenAPI conformance validator or frontend automation framework was installed; do not present structural reference checks as full schema conformance testing.
 
 Work is on feat/trip-presets. No commit, push, publication or simulation implementation was performed. PRE-03's future comparison-copy behaviour cannot yet be exercised because comparisons are not implemented. Manual user code intervention and a successful-test screenshot were not supplied; this report records text test results without inventing either artifact.
+
+## 2026-11-10 — stage 4 road network
+
+The user authorized stage 4 after sharing a reference map. AI selected an approximate rectangular boundary, documented the plan, and combined smaller OpenStreetMap API extracts after the full request failed. The importer produced a versioned Flyway migration with 6,958 nodes and 11,410 directed edges. The API exposes network versions and geometry. React renders the graph with labels, attribution, and endpoint selection. No new package dependencies were required.
+
+Maven verification passed 12 HTTP integration tests. The offline importer passed two tests for reversed one-way direction and missing references. SQLite foreign key validation returned no violations. The frontend typecheck and production build passed. In the browser, both map clicks populated the endpoint selectors and a Gdańsk trip was saved through the form into a disposable SQLite database.
+
+The data provenance document records the approximate bounds, the selected road classes, the default speed for missing limits, and exclusions such as turn restrictions. Signal placement and simulation belong to later stages.
+
+## Full-screen map picker
+
+At the user's request, AI made the Gdańsk road map the landing view, added street search and endpoint pins, and moved named preset management into a dialog. The existing API and storage remain in use. The frontend production build and git diff check passed. In the browser, both street searches selected their endpoints, two pins rendered, the SVG matched the viewport height, and the saved-trip dialog opened and closed.
+
+## Map pin interactions and yellow-light decision
+
+AI added pointer dragging, independent clear buttons, and an explicit active endpoint indicator. The frontend build and diff check passed. A desktop browser check verified moving both pins, retaining the original point after an off-road drop, and clearing B without removing A. Touch uses pointer events and was not tested on a physical phone. The user approved a 30 m threshold for yellow-light entry. The rule is recorded for stage 5.
+
+## Wider map and coverage overlay
+
+AI added visible OpenStreetMap tiles, zoom controls and a coverage overlay around the existing graph. The frontend build and diff check passed. A browser check confirmed that road labels, greenery, and the coastline rendered, that zoom in and out changed and restored the viewport, and that street selection still displayed a pin. The blue circle approximates coverage and the thin rectangle marks the imported graph bounds.
+
+## Map navigation gestures
+
+AI added background panning, cursor-anchored wheel zoom, two-pointer pinch zoom, and wider endpoint controls on large displays. The production build and diff check passed. Desktop browser checks confirmed dragging changed the view without adding a pin, wheel zoom changed the scale, and the panel measured 440 px on the test display. Touch gestures were not exercised on a physical phone.
+
+## Free pins and car access
+
+The full-screen picker preserves arbitrary pin locations within the coverage circle and shows a distinct car access marker for the nearest eligible graph node. Directed reachability accounts for the other selected endpoint. Saved-trip node IDs remain compatible. The production build, diff check and four direct checks of the access-node algorithm passed. Parking availability and pedestrian movement are outside the simulation scope.
+
+## Parking and residential access
+
+AI generated Gdańsk v2 from the existing extracts, added access filters to the importer and selected v2 for new trips. The importer tests covered a one-way parking aisle, a private road, a gate and a permissive driveway. Three importer tests, 12 backend tests, the frontend build and SQLite foreign key checks passed. The prior graph remains available for saved v1 presets.
+
+## Eastern road connections and route preview
+
+AI identified that the previous eastern boundary cut off Łozy. The v3 migration adds the missing eastern roads, and the map previews a directed car route between the selected access nodes. The frontend build and 14 backend tests passed. The regression test checks that the route from Łozy to Aleksandra Zelwerowicza crosses the former boundary and that every geometry segment corresponds to a directed graph edge. API tests also cover missing and disconnected endpoints. The updated line was not checked in a browser.

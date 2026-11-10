@@ -103,3 +103,7 @@ GET /api/v1/health returns 200 with {"status":"UP","application":"greenwave"}. T
 ## Stage-3 implemented contract
 
 The machine-readable contract for implemented endpoints is [openapi.yaml](openapi.yaml). Scenario detail currently returns id/version/name/networkId/networkVersion, four nodes as {id,lat,lon}, and an empty signals array for the synthetic fixture. No real map or signal program is claimed. CRUD validates numeric bounds, integer seed, tick interval, scenario membership and directed reachability. Physical signal-stopping feasibility is deferred to the execution stage, pending resolution of YELLOW semantics. Unknown JSON properties and fractional integer fields return 400; semantic validation returns 422. Unsupported HTTP methods return 405. Unexpected failures use the same structured error shape without leaking exception details.
+
+## Stage 4 network reads
+
+GET /networks lists immutable network versions with actual bounds. GET /networks/{id} returns nodes and directed edges, including optional road names represented by empty strings when unavailable and geometry as two [longitude, latitude] coordinates. An unknown ID returns 404. The synthetic fixture is retained. The implemented schemas are in [OpenAPI](openapi.yaml).
