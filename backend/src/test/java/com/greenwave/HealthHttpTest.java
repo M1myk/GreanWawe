@@ -10,7 +10,8 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "greenwave.cors.allowed-origins=http://localhost:5173,https://example.test")
+        properties = {"greenwave.cors.allowed-origins=http://localhost:5173,https://example.test",
+                "spring.datasource.url=jdbc:sqlite:file:health-test?mode=memory&cache=shared"})
 class HealthHttpTest {
     @LocalServerPort
     private int port;

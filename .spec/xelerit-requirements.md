@@ -23,7 +23,7 @@ AI integration in the product is optional. Keep the project small enough for a s
 
 ## Submission checklist
 
-- [ ] Full CRUD works in both layers and persists data.
+- [x] Full CRUD works in both layers and persists data.
 - [ ] Simulation and the distinctive feature work.
 - [ ] Relevant tests and builds pass.
 - [ ] README covers all four requested areas.

@@ -1,6 +1,7 @@
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './style.css';
+import { TripPresets } from './trips/TripPresets';
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api/v1').replace(/\/$/, '');
 type Connection = 'checking' | 'connected' | 'unavailable';
@@ -48,7 +49,7 @@ function App() {
         </p>
         <button disabled={connection === 'checking'} onClick={() => setAttempt(value => value + 1)}>Retry connection</button>
       </section>
-      <p className="note">Project setup is ready. Trip management, maps and simulated traffic lights will be added in later stages.</p>
+      <TripPresets />
     </main>
   );
 }

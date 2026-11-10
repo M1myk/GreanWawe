@@ -38,3 +38,7 @@ The user authorized the previously described setup stage. Implemented Java 21 wi
 Default ports: API 8080, frontend 5173. CORS accepts explicit configured origins, no credentials or wildcard. Only GET/OPTIONS are currently exposed; CRUD will expand and test methods in stage 3. Health endpoint is /api/v1/health and is not a persistence-readiness guarantee.
 
 Compatibility references checked during setup: [Spring Boot requirements](https://docs.spring.io/spring-boot/system-requirements.html) and [Vite requirements](https://vite.dev/guide/). Integration was verified by actual Maven/npm builds rather than version assumptions alone.
+
+## Stage 3 authorization
+
+The user requested the next stage with complete domain/DTO/entity/controller/service/repository structure. A synthetic four-node scenario was explicitly accepted, with Gdańsk deferred to stage 4. Adopt the preset numerical validation bounds for saved configurations only; simulation behaviour and YELLOW rules remain unapproved. Flyway and Hibernate use Boot-managed versions with the community SQLite dialect; pin Xerial JDBC at 3.54.1.0. No external DB server is installed. The concrete plan is in features/trip_presets.md.

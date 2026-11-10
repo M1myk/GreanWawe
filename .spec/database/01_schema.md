@@ -34,3 +34,9 @@ Use temporary SQLite databases for integration tests: empty-database migrations,
 ## Preset CRUD
 
 Store the full configuration and name. UPDATE checks id and version; no match means conflict or missing resource. Comparisons keep independent config_json and no preset dependency. Deleting a preset never deletes comparisons. Its scenario must exist. Test CRUD, version conflicts and historical-result preservation.
+
+## Implemented stage-3 subset
+
+V1 creates network/node/edge/scenario tables needed for referential and reachability validation and trip_preset. V2 inserts the explicitly approved synthetic fixture. Source metadata, edge geometry, signal programs and comparison/result tables remain later migrations; they are not falsely represented by empty runtime entities now. Runtime uses Spring Data JPA with Hibernate's community SQLite dialect and Xerial JDBC 3.54.1.0. Flyway 12.4.0 applies migrations. Each pooled connection enables foreign keys; pool size is 1 for the local single-instance MVP.
+
+trip_preset.version stores Hibernate's zero-based optimistic version, while API versions start at 1. Timestamp strings use fixed nine-digit fractional UTC formatting for stable SQL ordering. Default file: greenwave.db in the process working directory; override with GREENWAVE_DB_URL. Completed simulation persistence described above remains planned.
