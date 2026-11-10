@@ -29,3 +29,7 @@ The MVP uses one backend instance and one local operator. Distributed sessions a
 A prepared OpenStreetMap extract supplies a directed graph with geometry, directions and speed limits. Map tiles and routing data are separate. Do not delegate routing to an external API. Record source, acquisition date, licence, attribution and transformations with the dataset; verify tile-provider terms before configuration.
 
 All signals, phase programs and pedestrian events are defined by the simulation scenario. No live controllers, ITS feeds or measured signal timings are integrated. OpenStreetMap data does not supply runtime signal phases.
+
+## Implemented stage-2 baseline
+
+Java 21/Spring Boot 4.1.2 and React 19.3.1/TypeScript 7.0.2/Vite 8.3.7 are now pinned. See features/project_setup.md for the authorized dependency list. Database, ORM, map and Tailwind remain future proposals rather than installed dependencies.

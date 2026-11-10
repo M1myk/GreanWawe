@@ -95,3 +95,7 @@ trip-presets are named configurations independent of active simulations.
 | DELETE /trip-presets/{id} | 204; missing resource 404 |
 
 Trimmed name length is 1–80 characters; duplicates are allowed. config uses the comparison-create structure and validation. version is a positive integer starting at 1. Editing/deleting a preset never changes comparisons, each of which owns a copied configuration. Launching a preset submits that copy to POST /comparisons.
+
+## Implemented setup endpoint
+
+GET /api/v1/health returns 200 with {"status":"UP","application":"greenwave"}. This availability endpoint is implemented in stage 2; business endpoints above remain planned. CORS currently allows GET and OPTIONS for configured origins; stage 3 must add and verify required CRUD methods.

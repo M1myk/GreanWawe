@@ -23,10 +23,18 @@ These details are drafts, not previously approved user decisions. Approval of th
 - Meaning of the historical name “Native”; no separate mode is defined from an incomplete reference.
 - Compatible framework versions, SQLite dialect, migration and UI test tools.
 - Machine-readable OpenAPI contract before endpoint implementation.
-- Git initialization before branch-based development; the working folder has no Git history at this documentation stage.
+- Git was present when stage 2 started; implementation uses branch chore/project-setup. No commit or publication was performed.
 
 ## Review findings
 
 Feature-level models, contracts and full Given–When–Then scenarios were missing and have been added under features/. Draft versus approved status is now explicit.
 
 **Unresolved conflict:** the proposed rule forbids entering from the beginning of YELLOW. A vehicle can be too close to stop within the braking limit when that phase begins. Merely checking YELLOW duration does not resolve this. Before implementing that behaviour, agree on a YELLOW entry rule or an explicit simplified model. Position clamping must not conceal discontinuous physics. This remains open, not an approved business-rule change.
+
+## Stage 2 dependency and configuration decision
+
+The user authorized the previously described setup stage. Implemented Java 21 with Spring Boot 4.1.2, Spring Web MVC/test starters and Maven; React/react-dom 19.3.1, TypeScript 7.0.2, Vite 8.3.7, React Vite plugin 6.3.0, React types 19.3.0 and Node types 26.6.6. Registry versions were checked and actual builds passed. Node runtime is 24.x; type definitions are compile-time only. SQLite, ORM, map and Tailwind dependencies are deferred until needed.
+
+Default ports: API 8080, frontend 5173. CORS accepts explicit configured origins, no credentials or wildcard. Only GET/OPTIONS are currently exposed; CRUD will expand and test methods in stage 3. Health endpoint is /api/v1/health and is not a persistence-readiness guarantee.
+
+Compatibility references checked during setup: [Spring Boot requirements](https://docs.spring.io/spring-boot/system-requirements.html) and [Vite requirements](https://vite.dev/guide/). Integration was verified by actual Maven/npm builds rather than version assumptions alone.

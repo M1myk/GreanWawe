@@ -15,7 +15,7 @@ All signal phases, cycles and pedestrian requests are simulated by the backend. 
 
 ## Current status
 
-The project is in the specification and review stage. Layer specifications, feature acceptance criteria, an implementation roadmap and AI-agent instructions have been prepared. Backend and frontend implementation, application tests and a demonstration recording have not started. Technical defaults and the detailed GreenWave heuristic remain proposals until reviewed.
+Stage 2 (project setup) is implemented: separate Spring Boot and React applications, a health endpoint, configurable CORS, a browser connection check and HTTP integration tests. Specification review for later features continues. Saved-trip CRUD, SQLite persistence, maps and the simulation are not implemented yet. Numerical simulation defaults and the detailed GreenWave heuristic remain proposals until reviewed.
 
 ## Planned MVP
 
@@ -33,12 +33,12 @@ Live GPS navigation, real signal control, traffic queues, multiple interacting v
 
 | Layer | Responsibility | Technology |
 | --- | --- | --- |
-| Backend | REST, simulation, routing, validation, metrics | Java; Spring Boot and Maven proposed |
-| Frontend | Map, forms, controls, animation and results | React; TypeScript, Vite, Tailwind CSS and Leaflet proposed |
+| Backend | REST, simulation, routing, validation, metrics | Java 21, Spring Boot 4.1.2, Maven |
+| Frontend | Map, forms, controls, animation and results | React 19.3.1, TypeScript 7.0.2, Vite 8.3.7; Tailwind CSS and Leaflet planned |
 | Database | Saved configurations, scenarios and results | SQLite proposed; no external database server |
 | Map | Road geometry and background | Prepared OpenStreetMap extract proposed |
 
-Java and React are selected. Exact dependency versions and SQLite integration will be verified before implementation. Backend code will live in `backend/`, frontend code in `frontend/`. These implementation folders do not exist yet.
+The backend is in `backend/`, the frontend in `frontend/`. Direct dependency versions are pinned in their manifests, with the frontend lockfile included. SQLite integration and map/styling dependencies will be introduced and verified in their respective stages.
 
 ## How I am building the project
 
@@ -60,7 +60,7 @@ I remain responsible for scope, design decisions, understanding the solution and
 | Stage | Planned outcome | Status |
 | --- | --- | --- |
 | 1. Requirements and specification | Layer boundaries, API, invariants and feature criteria | Draft prepared; review ongoing |
-| 2. Project setup | Separate Java/React projects, pinned dependencies, CORS and local setup | Planned |
+| 2. Project setup | Separate Java/React projects, pinned dependencies, CORS and local setup | Implemented and verified |
 | 3. Saved trips | End-to-end CRUD with SQLite and a simple UI | Planned |
 | 4. Road network | Small Gdańsk extract, validated graph and map display | Planned |
 | 5. Baseline simulation | Clock, signals, vehicle physics and A* | Planned |
@@ -74,7 +74,7 @@ The [implementation plan](.spec/implementation_plan.md) gives more detail. Open 
 
 I use **ChatGPT and Codex (OpenAI)** as engineering assistants and technical mentors. So far, AI has helped organize requirements, draft the architecture and specification, identify gaps and conflicting rules, define acceptance criteria, and prepare project documentation and `.gitignore`.
 
-During implementation, I plan to use AI for bounded coding tasks, test preparation, debugging and review. These are planned activities, not claims of completed work. The product itself does not currently include an AI feature; its distinctive functionality is the GreenWave simulation.
+In stage 2, AI also implemented the Java/React skeletons, configured CORS, prepared and ran three HTTP integration tests, built the frontend and checked browser connection, failure and recovery states. Future bounded coding, test preparation, debugging and review remain planned for subsequent features. The product itself does not currently include an AI feature; its distinctive functionality is the GreenWave simulation.
 
 Agent behaviour and constraints are documented in [AGENTS.md](AGENTS.md). Actual activities, findings and verification are recorded in the [SDD report](docs/sdd_report.md). Private conversation exports and conversation links are excluded from public project materials.
 
@@ -90,7 +90,68 @@ Project documentation and code comments are written in English.
 
 ## Local setup and tests
 
-There is no runnable application yet. Verified, step-by-step instructions for installing dependencies, configuring the environment, starting the API and frontend, and running tests will be added alongside implementation. No unverified startup commands or test results are presented here.
+### Prerequisites
+
+Use JDK 21, Maven 3.9.x and Node.js 24.x with npm. Verification used Java 21.0.11, Maven 3.9.16, Node 24.14.1 and npm 11.11.0 on macOS. Downloading dependencies requires internet access. No database server or API key is needed for stage 2.
+
+### 1. Build and start the backend
+
+From the repository root:
+
+```sh
+cd backend
+mvn verify
+java -jar target/greenwave-backend-0.1.0-SNAPSHOT.jar
+```
+
+Leave this terminal running. The API listens on the loopback interface at `http://localhost:8080`. Open `http://localhost:8080/api/v1/health` to see:
+
+```json
+{"status":"UP","application":"greenwave"}
+```
+
+This endpoint checks application availability, not database readiness.
+
+### 2. Install and start the frontend
+
+In a second terminal, from the repository root:
+
+```sh
+cd frontend
+cp .env.example .env.local
+npm ci
+npm run dev
+```
+
+Open `http://localhost:5173`. The page should display **Connected to the GreenWave API.** The frontend calls the API directly across origins rather than using a development proxy, so this checks CORS too. Use **Retry connection** after restarting the API. Stop each server with Ctrl+C.
+
+### 3. Run checks and build
+
+From `backend/`, run `mvn verify` for HTTP integration tests and the executable JAR. From `frontend/`, run `npm run typecheck` or `npm run build` (which also runs typecheck). The frontend build is written to `frontend/dist/`.
+
+Current automated coverage: health response, allowed custom-origin preflight and rejection of an unapproved origin. Browser checks covered connected, unavailable and recovered states. There are no simulation tests yet.
+
+### Configuration
+
+| Variable | Default | Usage |
+| --- | --- | --- |
+| SERVER_PORT | 8080 | Export before starting Java |
+| GREENWAVE_CORS_ALLOWED_ORIGINS | http://localhost:5173 | Comma-separated explicit browser origins; export before starting Java |
+| VITE_API_BASE_URL | http://localhost:8080/api/v1 | Set in frontend/.env.local; restart Vite after changes |
+
+Spring Boot does not automatically read a `.env` file in this setup: export backend variables in the shell. Vite loads frontend `.env.local`. Never store secrets in `VITE_` variables; these become public browser code.
+
+Vite uses strict port 5173 and fails if it is occupied. Stop the other application or update the port deliberately together with CORS. `localhost` and `127.0.0.1` are different browser origins; use the documented frontend URL or explicitly allow the chosen origin. The optional Vite preview uses port 4173, which must be explicitly allowed before API calls from preview will work.
+
+## Project structure
+
+```text
+.spec/       Requirements, architecture, contracts and acceptance criteria
+backend/     Java application, HTTP configuration and integration tests
+frontend/    React application, TypeScript/Vite configuration and lockfile
+docs/        Factual SDD and AI-use report
+AGENTS.md    Engineering and mentoring instructions
+```
 
 ## Demonstration
 
