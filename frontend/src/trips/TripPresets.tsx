@@ -3,11 +3,11 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiError, request } from '../api/client';
 import { NumberField } from './NumberField';
-import { defaultConfig } from './types';
+import { defaultConfig, trafficLabels, trafficModes, type TrafficMode } from './types';
 import type { Scenario, ScenarioDetails, TripConfig, TripPage, TripPreset } from './types';
 
 const pageSize = 5;
-export function TripPresets() {
+export function TripPresets({ onLaunch }: { onLaunch: (config: TripConfig, networkId: string) => void }) {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [details, setDetails] = useState<ScenarioDetails | null>(null);
   const [config, setConfig] = useState<TripConfig>(structuredClone(defaultConfig));
@@ -111,6 +111,10 @@ export function TripPresets() {
             <label>Destination node<select required aria-invalid={!!fieldError('config.destinationNodeId')} value={config.destinationNodeId} onChange={event => setConfig(current => ({ ...current, destinationNodeId: event.target.value }))}>
               <option value="">Select destination</option>{details?.nodes.map(node => <option key={node.id}>{node.id}</option>)}
             </select>{fieldError('config.destinationNodeId') && <small className="field-error">{fieldError('config.destinationNodeId')}</small>}</label>
+            <label>Ruch samochodowy<select value={config.trafficMode ?? 'NONE'}
+              onChange={event => setConfig(current => ({ ...current, trafficMode: event.target.value as TrafficMode }))}>
+              {trafficModes.map(mode => <option key={mode} value={mode}>{trafficLabels[mode]}</option>)}
+            </select></label>
             <NumberField error={fieldError('config.vehicle.maxSpeedMps')} label="Maximum speed (km/h)" min={0.001} max={144} step={0.001} value={Number((config.vehicle.maxSpeedMps * 3.6).toFixed(3))} onChange={value => vehicle('maxSpeedMps', value / 3.6)} />
             <NumberField error={fieldError('config.vehicle.accelerationMps2')} label="Acceleration (m/s²)" min={0.1} max={10} step={0.1} value={config.vehicle.accelerationMps2} onChange={value => vehicle('accelerationMps2', value)} />
             <NumberField error={fieldError('config.vehicle.brakingMps2')} label="Braking (m/s²)" min={0.1} max={10} step={0.1} value={config.vehicle.brakingMps2} onChange={value => vehicle('brakingMps2', value)} />
@@ -132,6 +136,11 @@ export function TripPresets() {
         <strong>{trip.name}</strong><p>{trip.config.startNodeId} → {trip.config.destinationNodeId} · version {trip.version}</p>
         <p className="note">Updated {new Date(trip.updatedAt).toLocaleString()}</p>
         <div className="actions"><button disabled={busy || loading} onClick={() => void edit(trip.id)}>Edit {trip.name}</button>
+          <button className="secondary" disabled={busy || loading || !scenarios.some(item => item.id === trip.config.scenarioId)}
+            onClick={() => {
+              const scenario = scenarios.find(item => item.id === trip.config.scenarioId);
+              if (scenario) onLaunch(trip.config, scenario.networkId);
+            }}>Porównaj {trip.name}</button>
           <button className="secondary" disabled={busy || loading} onClick={() => setConfirmDelete(trip.id)}>Delete {trip.name}</button></div>
         {confirmDelete === trip.id && <div role="group" aria-label="Confirm deletion"><p>Delete this saved trip?</p>
           <button disabled={busy} onClick={() => void remove(trip.id)}>Confirm delete</button>{' '}

@@ -1,6 +1,8 @@
 package com.greenwave.trip.service;
 
 import com.greenwave.trip.domain.*;
+import com.greenwave.network.RoadNetworkReader;
+import com.greenwave.network.RoadRoute;
 import com.greenwave.trip.persistence.*;
 import com.greenwave.scenario.persistence.ScenarioRepository;
 import com.greenwave.shared.api.ApiException;
@@ -19,8 +21,9 @@ public class TripPresetService {
     private final TripPresetRepository repository;
     private final ScenarioRepository scenarios;
     private final TripPresetMapper mapper;
-    public TripPresetService(TripPresetRepository repository, ScenarioRepository scenarios, TripPresetMapper mapper) {
-        this.repository = repository; this.scenarios = scenarios; this.mapper = mapper;
+    private final RoadNetworkReader networks;
+    public TripPresetService(TripPresetRepository repository, ScenarioRepository scenarios, TripPresetMapper mapper, RoadNetworkReader networks) {
+        this.repository = repository; this.scenarios = scenarios; this.mapper = mapper; this.networks = networks;
     }
     public TripPreset create(String name, TripConfig config) {
         validate(config);
@@ -63,8 +66,13 @@ public class TripPresetService {
         if (config.startNodeId().equals(config.destinationNodeId())) throw ApiException.invalid("config.destinationNodeId", "Choose a different destination");
         if (nodes.stream().noneMatch(n -> n.id().equals(config.startNodeId()))) throw ApiException.invalid("config.startNodeId", "Unknown start node");
         if (nodes.stream().noneMatch(n -> n.id().equals(config.destinationNodeId()))) throw ApiException.invalid("config.destinationNodeId", "Unknown destination node");
-        if (!scenarios.reachable(config.scenarioId(), config.startNodeId(), config.destinationNodeId())) {
-            throw ApiException.invalid("config.destinationNodeId", "No directed route connects these nodes");
+        var scenario = scenarios.findAll().stream().filter(item -> item.id().equals(config.scenarioId())).findFirst().orElseThrow();
+        try {
+            RoadRoute.findEdges(networks.get(scenario.networkId()), config.startNodeId(), config.destinationNodeId(),
+                    config.vehicle().maxSpeedMps());
+        } catch (ApiException exception) {
+            if (exception.status() != 422) throw exception;
+            throw ApiException.invalid("config.destinationNodeId", "No permitted directed route connects these nodes");
         }
     }
     public record Window(List<TripPreset> items, long total) { }

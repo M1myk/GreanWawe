@@ -1,12 +1,12 @@
 # SDD implementation plan
 
-Status: stages 2–4 completed. Simulation stages remain planned.
+Status: stages 2–7 implemented. Submission materials remain stage 8.
 
 1. Review the MVP and open decisions; agree on map scope and algorithm parameters in the specification.
 2. Create separate backend/frontend skeletons, pin compatible dependencies, configure CORS and document local setup.
 3. Implement SQLite migrations and saved-trip CRUD, including a simple UI. Verify UI → REST → database operations.
 4. Prepare a small test graph and Gdańsk extract; validate directions, geometry and attribution.
-5. Implement the clock, simulated signals, vehicle physics and A*. Verify invariants and hand-calculated cases.
+5. Implement the clock, simulated signals, vehicle physics and A*, with a single-run map view. Verify invariants and hand-calculated cases.
 6. Add the GreenWave heuristic; verify restricted knowledge and equal comparison conditions.
 7. Integrate map, controls, polling and results; check errors, reset and reproducibility.
 8. Complete README, factual AI report and GIF/MP4 demonstration. Verify setup from a clean checkout and the Xelerit checklist.
@@ -20,3 +20,9 @@ Stage 2 delivered: Java/React skeletons, pinned manifests and npm lockfile, heal
 Stage 3 delivered a complete working preset module and synthetic scenario, SQLite/Flyway integration, JPA entity/repository, domain and DTO models, mapper, service, controller, validation/errors and React CRUD. The user approved the synthetic fixture; Gdańsk import remains stage 4.
 
 Stage 4 delivered the versioned Gdańsk road extract, network REST reads and map-based endpoint selection. See [road data provenance](../docs/road-network-data.md).
+
+Stage 5 delivered one A* simulation, in-memory session controls, deterministic signal programs, vehicle motion, journey metrics and the single-run map view. See the [baseline specification](features/baseline_simulation.md). No new dependency or migration was required.
+
+Stage 6 delivered the single-run GreenWave algorithm through the simulation API and shared junction and maneuver speed limits. The paired session and UI were added in stage 7.
+
+Stage 7 delivered a paired simulation with a shared clock, persisted terminal snapshots, map follow controls for both cars and a comparison table. The map can load saved-trip settings.

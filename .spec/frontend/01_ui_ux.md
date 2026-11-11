@@ -37,3 +37,11 @@ The full-screen Gdańsk view displays a wider OpenStreetMap basemap with street 
 Drag the map background with a mouse or one finger to pan. Zoom with the wheel around the cursor or pinch around the midpoint of two fingers. Panning and pinching must not select an endpoint. Pin dragging stays separate. The endpoint panel grows on large displays and retains its compact mobile layout.
 
 The full-screen map accepts free pin placement inside the marked coverage circle. The displayed pin stays at the selected location. The app resolves a separate car access node on the imported graph, using directed reachability from the other endpoint when available. It shows a separate access marker and label when the selected location differs from the road node. This is a simulation access point. Pedestrian routing and parking availability are outside the scope. Saved presets continue to store road node IDs.
+
+## Driving view
+
+Starting a baseline run opens Driving View. The north-up camera follows the vehicle at street scale. The panel shows the current street, the next junction or simulated light on the route, its distance and an estimated time at current speed. A stopped vehicle has no time estimate. A signal displays its current phase and the phase countdown when available. The close button restores the previous overview camera without changing the run. The user can reopen Driving View from the simulation controls. Wheel, pinch and buttons allow deeper zoom, with the vehicle as the zoom anchor while following.
+
+The frontend interpolates along the route between confirmed progress samples and snaps to the latest confirmed state on pause, reset, or arrival. Reduced motion shows confirmed positions directly.
+
+During a GreenWave comparison, draw the alternatives from the latest route evaluation as violet dashed overlays beneath the selected routes. Provide a collapsible list of their remaining travel time, signal waiting and congestion delay. Selecting a variant highlights its path for inspection and leaves the simulation's routing decision to the backend.

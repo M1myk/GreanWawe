@@ -1,6 +1,6 @@
 # GreenWave — MVP specification v0.2
 
-Date: 2026-11-10. Status: stages 2–4 implemented; functional simulation specifications remain drafts for review. Documentation and code comments are written in English.
+Date: 2026-11-10. Status: stages 2–7 implemented; submission materials remain stage 8. Documentation and code comments are written in English.
 
 ## Goal
 
@@ -41,6 +41,7 @@ Each document includes a data model, invariants, API references, scope and Given
 - [Vehicle physics](features/vehicle_physics.md)
 - [A* navigation](features/astar_navigation.md)
 - [GreenWave navigation](features/greenwave_navigation.md)
+- [Baseline simulation](features/baseline_simulation.md)
 - [Simulation comparison](features/simulation_comparison.md)
 
 Shared definitions are linked rather than maintained as competing contracts. Java and React are selected; detailed contracts, numerical defaults and the heuristic remain proposals listed in the decision register. Approval of the SDD process does not approve every technical proposal.
@@ -49,6 +50,6 @@ All phases, cycles and pedestrian requests are simulated by Java. Map-source met
 
 Update the specification first when an accepted requirement changes, followed by implementation and relevant tests.
 
-Stage 2 specification and verification criteria: [Project setup](features/project_setup.md). Health/CORS, the connection view, SQLite migrations and layered saved-trip CRUD are implemented. The Gdańsk road map and synthetic fixture are available. Simulation remains planned.
+Stage 2 specification and verification criteria: [Project setup](features/project_setup.md). Health/CORS, the connection view, SQLite migrations and layered saved-trip CRUD are implemented. The Gdańsk road map, synthetic fixture and both single-run simulations and paired comparisons are available.
 
 Implemented API schemas: [OpenAPI](shared/openapi.yaml). Stage 3 follows the authorized plan in features/trip_presets.md.

@@ -25,16 +25,4 @@ public class ScenarioRepository {
                 """).setParameter("scenario", scenarioId).getResultList();
         return rows.stream().map(r -> new ScenarioNode((String)r[0], ((Number)r[1]).doubleValue(), ((Number)r[2]).doubleValue())).toList();
     }
-    public boolean reachable(String scenarioId, String start, String destination) {
-        var result = (Number)entityManager.createNativeQuery("""
-                WITH RECURSIVE reachable(node_id) AS (
-                    SELECT n.node_id FROM road_node n JOIN scenario s ON s.network_id=n.network_id
-                    WHERE s.id=:scenario AND n.node_id=:start
-                    UNION
-                    SELECT e.to_node_id FROM road_edge e JOIN scenario s ON s.network_id=e.network_id
-                    JOIN reachable r ON e.from_node_id=r.node_id WHERE s.id=:scenario
-                ) SELECT count(*) FROM reachable WHERE node_id=:destination
-                """).setParameter("scenario", scenarioId).setParameter("start", start).setParameter("destination", destination).getSingleResult();
-        return result.intValue() > 0;
-    }
 }

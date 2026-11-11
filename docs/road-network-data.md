@@ -18,4 +18,8 @@ New map selections use v2. Previously saved v1 scenarios still resolve to their 
 
 ## Gdańsk v3 eastern extension
 
-V5 extends the eastern edge to 18.652 E. Four additional OpenStreetMap XML extracts were downloaded on 2026-11-10 to complete the Łozy corridor and neighboring streets, including Aleksandra Zelwerowicza. The graph has 29,433 directed edges. New map selections use v3. The route preview minimizes imported edge travel time and uses ordered road geometry. Existing access filters apply. Turn restrictions and conditional access remain outside the model. [OpenStreetMap map API](https://wiki.openstreetmap.org/wiki/API_v0.6)
+V5 extends the eastern edge to 18.652 E. Four additional OpenStreetMap XML extracts were downloaded on 2026-11-10 to complete the Łozy corridor and neighboring streets, including Aleksandra Zelwerowicza. The graph has 29,433 directed edges. New map selections use v3. The route preview minimizes imported edge travel time and uses ordered road geometry. Existing access filters apply. The original v3 geometry import omitted turn restrictions. V7 adds the available rules as described below. Conditional access remains outside the model. [OpenStreetMap map API](https://wiki.openstreetmap.org/wiki/API_v0.6)
+
+## Turn and roundabout metadata
+
+V7 loads maneuver metadata from the same November 2026 OSM extracts and keeps the existing geometry and edge IDs. The v3 graph has 129 prohibited directed edge sequences and 257 edges in roundabout groups. Mandatory turns are translated to prohibited competing transitions. Via-node and via-way restrictions are supported for cars when the relation can be resolved on the imported graph. Conditional restrictions, missing OSM tags and lane-level traffic rules are outside the current model. Reproduce the additive migration with python3 scripts/import-road-rules.py followed by the original OSM extracts.

@@ -1,6 +1,6 @@
 # GreenWave navigation
 
-Status: feature specification v0.2, draft for review; not implemented.
+Status: the single-run GreenWave algorithm is implemented in stage 6. Paired runs are implemented in stage 7.
 
 ## Goal
 
@@ -20,7 +20,7 @@ Also apply the [shared invariants](../shared/02_business_invariants.md).
 
 ## API contract
 
-navigation fields in POST /api/v1/comparisons; routeEdgeIds and targetSpeedMps in snapshots. Detailed heuristic remains proposed in backend navigation rules.
+The single-run implementation accepts algorithm in POST /api/v1/simulations. The comparison contract describes configuration and paired snapshots.
 
 Fields, units, validation and errors follow the [shared REST contract](../shared/01_api_contracts.md). Do not maintain a competing contract here.
 
@@ -49,3 +49,25 @@ Fields, units, validation and errors follow the [shared REST contract](../shared
 Simple heuristic with parameters reviewed before coding. No ML or promises of improving every trip.
 
 Use these criteria for at least three meaningful automated tests for the feature. The implementation plan will identify concrete files and tools. Verify UI integration where applicable. Review proposed defaults in the [decision register](../decisions.md) before implementation.
+
+## Stage 6 implementation plan
+
+The user authorized the algorithm and shared maneuver speed limits. Update the Java simulation engine, signal observations and weighted A* search, the simulation API contract and backend tests. Use the existing session lifecycle. The optional `algorithm` field on POST /simulations accepts ASTAR (default) or GREENWAVE. The snapshot names the algorithm. Independent runs use the same physics and the same deterministic per-node signal timeline for identical seed and network. The side-by-side session and UI remain stage 7. No dependencies or database migration are needed.
+
+GreenWave observes signals within the configured directed distance, 1,500 m by default, including the remaining distance on its current edge. At each decision, it evaluates each signal at its path-specific estimated arrival time. Any waiting shifts the estimated arrival at later vertices. It may replace the suffix beyond the current edge for an earlier arrival, or for less waiting when the estimated arrival ties. Previously traversed nodes are excluded from alternatives. Keep the route prefix within the braking lookahead, so a newly selected turn cannot impose an infeasible speed limit. At departure, GreenWave can also choose a different first edge. Only the fixed cycle position or the already-established pedestrian phase and countdown are exposed to the planner.
+
+For the next visible fixed signal on the chosen route, evaluate speeds in 1 m/s increments from 2 m/s and the normal vehicle maximum, using the same acceleration, braking and route limits as the engine. Choose the earliest predicted green crossing, favoring the smallest speed change on ties. The search does not infer future pedestrian requests. If no candidate helps, normal vehicle physics enforces the stop. The safety envelope can override every recommendation.
+
+Verify the shared 30/20/15 km/h limits with approach and crossing tests, a fixed-cycle speed recommendation, route switching with the current edge locked, deterministic pedestrian observations and HTTP selection of the algorithm.
+
+## Time-dependent routing acceptance
+
+At departure, given a 30 s route with 10 s or more of predicted signal delay and a 40 s route without waiting, GreenWave chooses the 40 s route when maneuvers and congestion are equivalent. Below 10 s it prefers the first route under the same conditions. Mid-drive changes follow the switching margin below. Given two signals on the same route, a wait at the first changes the estimated arrival used to evaluate the second. The comparison uses the current observation range, existing signal information and shared route commitment rules. Update the Java planner and tests. No API, migration or dependency change is needed.
+
+## Congestion and useful reroutes
+
+- Given a congested corridor and a meaningful clear bypass, when the queue is visible, then GreenWave accounts for both reduced speed and stop-and-go delay and may choose the bypass.
+- Given a clear main road and a side-road detour with a nominal benefit below the switching margin, when GreenWave compares them, then it keeps the main route.
+- Given several evaluated options, when the UI receives a GreenWave snapshot, then it draws the alternatives and lets the operator highlight one and inspect its estimates without changing the driven route.
+
+See [navigation](../backend/03_navigation.md#congestion-aware-and-stable-replanning) for the ranking and switching rules. The margin applies during the drive and to departures that add maneuvers or congestion, superseding an exact tie or small ETA gain in those cases.
