@@ -62,4 +62,12 @@ Verify the shared 30/20/15 km/h limits with approach and crossing tests, a fixed
 
 ## Time-dependent routing acceptance
 
-Given a 30 s route with 10 s or more of predicted signal delay and a 40 s route without waiting, GreenWave chooses the 40 s route. If the delay falls below 10 s, it chooses the first route again when the turn is still available. Given two signals on the same route, a wait at the first changes the estimated arrival used to evaluate the second. The comparison uses the current observation range, existing signal information and shared route commitment rules. Update the Java planner and tests. No API, migration or dependency change is needed.
+At departure, given a 30 s route with 10 s or more of predicted signal delay and a 40 s route without waiting, GreenWave chooses the 40 s route when maneuvers and congestion are equivalent. Below 10 s it prefers the first route under the same conditions. Mid-drive changes follow the switching margin below. Given two signals on the same route, a wait at the first changes the estimated arrival used to evaluate the second. The comparison uses the current observation range, existing signal information and shared route commitment rules. Update the Java planner and tests. No API, migration or dependency change is needed.
+
+## Congestion and useful reroutes
+
+- Given a congested corridor and a meaningful clear bypass, when the queue is visible, then GreenWave accounts for both reduced speed and stop-and-go delay and may choose the bypass.
+- Given a clear main road and a side-road detour with a nominal benefit below the switching margin, when GreenWave compares them, then it keeps the main route.
+- Given several evaluated options, when the UI receives a GreenWave snapshot, then it draws the alternatives and lets the operator highlight one and inspect its estimates without changing the driven route.
+
+See [navigation](../backend/03_navigation.md#congestion-aware-and-stable-replanning) for the ranking and switching rules. The margin applies during the drive and to departures that add maneuvers or congestion, superseding an exact tie or small ETA gain in those cases.

@@ -56,3 +56,7 @@ When yellow entry is considered, forecast the crossing under the active road and
 Integrate one shared warmed-up gasoline 2.0 L reference model over successful vehicle ticks. Use rolling and aerodynamic road load, positive tractive work and a load-dependent conversion to fuel. Stationary ticks use idle flow. Low-speed braking without positive traction uses idle flow. Above the model cutoff threshold, deceleration without positive traction uses zero injection. A new acceleration after a stop consumes fuel through positive kinetic work. Fuel remains frozen after arrival and resets with the trip. Two trips with different routes or speeds may differ for reasons other than stop count.
 
 See [fuel model inputs](../../docs/fuel-model.md). The metrics field fuelLiters is nullable for older stored results. No database migration is needed.
+
+## Transient acceleration fuel
+
+Add a shared positive engine-speed transient correction to the wheel-work gasoline estimate. Use the EPA Mazda 2.0 calibration coefficient and a continuous low-gear road-speed approximation. Idle and fuel cut retain their existing behavior. Expose cumulative transient fuel separately in both runs. Historical snapshots without the new metric remain readable.

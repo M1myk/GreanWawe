@@ -6,13 +6,12 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 import java.util.function.ToDoubleFunction;
 
 public record RoadRoute(List<List<Double>> geometry, double lengthM) {
-    private record Visit(String id, double seconds, double estimate) {}
+    private record Visit(String id, double seconds, double estimate, RoadRules.Context context, Visit previous) {}
 
     static RoadRoute between(NetworkController.Network network, String start, String destination) {
         var edges = findEdges(network, start, destination, Double.POSITIVE_INFINITY);
@@ -57,32 +56,31 @@ public record RoadRoute(List<List<Double>> geometry, double lengthM) {
         double secondsPerMeter = 0.999 * Math.min(1, distanceScale) / maxSpeed;
         var outgoing = network.edges().stream().collect(Collectors.groupingBy(NetworkController.Edge::fromNodeId));
         var queue = new PriorityQueue<>(Comparator.comparingDouble(Visit::estimate).thenComparing(Visit::id));
-        Map<String, Double> costs = new HashMap<>();
-        Map<String, NetworkController.Edge> previous = new HashMap<>();
-        costs.put(start, 0.0);
-        queue.add(new Visit(start, 0, straightDistance(nodes.get(start), nodes.get(destination)) * secondsPerMeter));
+        var costs = new HashMap<RoadRules.Context, Double>();
+        costs.put(RoadRules.START, 0.0);
+        queue.add(new Visit(start, 0, straightDistance(nodes.get(start), nodes.get(destination)) * secondsPerMeter,
+                RoadRules.START, null));
         while (!queue.isEmpty()) {
             var visit = queue.remove();
-            if (visit.seconds() > costs.get(visit.id())) continue;
+            if (visit.seconds() > costs.get(visit.context())) continue;
             if (visit.id().equals(destination)) {
                 var reversed = new ArrayList<NetworkController.Edge>();
-                for (String id = destination; !id.equals(start); ) {
-                    var edge = previous.get(id);
-                    reversed.add(edge);
-                    id = edge.fromNodeId();
+                for (var current = visit; current.previous() != null; current = current.previous()) {
+                    reversed.add(current.context().previous());
                 }
                 Collections.reverse(reversed);
                 return List.copyOf(reversed);
             }
             for (var edge : outgoing.getOrDefault(visit.id(), List.of())) {
+                var context = network.rules().enter(visit.context(), edge);
+                if (context == null) continue;
                 double penalty = addedSeconds.applyAsDouble(edge);
                 if (!Double.isFinite(penalty)) continue;
                 double seconds = visit.seconds() + freeFlowSeconds(edge, vehicleMax) + penalty;
-                if (seconds < costs.getOrDefault(edge.toNodeId(), Double.POSITIVE_INFINITY)) {
-                    costs.put(edge.toNodeId(), seconds);
-                    previous.put(edge.toNodeId(), edge);
+                if (seconds < costs.getOrDefault(context, Double.POSITIVE_INFINITY)) {
+                    costs.put(context, seconds);
                     double estimate = seconds + straightDistance(nodes.get(edge.toNodeId()), nodes.get(destination)) * secondsPerMeter;
-                    queue.add(new Visit(edge.toNodeId(), seconds, estimate));
+                    queue.add(new Visit(edge.toNodeId(), seconds, estimate, context, visit));
                 }
             }
         }

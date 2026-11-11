@@ -59,13 +59,51 @@ class SimulationTrafficTest {
         var detour = edge("ac", A, C, 250, "Detour");
         var network = new Network("test", "1", List.of(A, B, C), List.of(main.get(0), main.get(1), detour));
         var planner = new GreenWavePlanner(network, C.id(), SimulationSettings.DEFAULT);
-        var empty = planner.observe(A.id(), 0, node -> null, SimulationTraffic.EMPTY);
+        var empty = planner.observe(A.id(), 0, node -> null, SimulationTraffic.EMPTY, null);
         assertEquals(main, planner.chooseSuffix(A.id(), 0, false, main, Set.of(), empty));
         var traffic = new SimulationTraffic(Map.of("ab", 5.0, "bc", 5.0));
-        var seen = planner.observe(A.id(), 0, node -> null, traffic);
+        var seen = planner.observe(A.id(), 0, node -> null, traffic, null);
         assertEquals(List.of(detour), planner.chooseSuffix(A.id(), 0, false, main, Set.of(), seen));
-        var distant = planner.observe(A.id(), 1600, node -> null, traffic);
+        var distant = planner.observe(A.id(), 1600, node -> null, traffic, null);
         assertEquals(main, planner.chooseSuffix(A.id(), 0, false, main, Set.of(), distant));
+    }
+
+    @Test void queueStopsStillReduceExpectedSpeedBelowALowVehicleCap() {
+        var road = edge("ab", A, B, 100, "Main");
+        var network = new Network("test", "1", List.of(A, B), List.of(road));
+        var wave = new SimulationTraffic.QueueWave(4, 60, 60, 0, true);
+        var traffic = new SimulationTraffic(Map.of("ab", 4.0), Map.of("ab", wave));
+        var planner = new GreenWavePlanner(network, B.id(), SimulationSettings.DEFAULT);
+        var observed = planner.observe(B.id(), 1600, node -> null, traffic, road);
+        assertEquals(100, observed.travelSeconds(road, 100, 2), 1e-8);
+        assertEquals(50, observed.congestionDelay(road, 100, 2), 1e-8);
+    }
+
+    @Test void snapshotShowsChosenBypassAndTheCongestedOptionItReplaced() {
+        var approach = edge("ab", A, B, 300, "Main");
+        var main = edge("bc", B, C, 200, "Main");
+        var bypass = edge("bypass", B, C, 300, "Bypass");
+        var network = new Network("test", "1", List.of(A, B, C), List.of(approach, main, bypass));
+        var wave = new SimulationTraffic.QueueWave(4, 60, 60, 0, true);
+        var traffic = new SimulationTraffic(Map.of("ab", 4.0, "bc", 4.0), Map.of("ab", wave, "bc", wave));
+        var run = new BaselineSimulation(List.of(approach, main), 42, new SimulationSignals.Scenario(Set.of(), Map.of()),
+                BaselineSimulation.Algorithm.GREENWAVE, network, SimulationSettings.DEFAULT, traffic);
+        run.status(BaselineSimulation.Status.RUNNING);
+        run.advance();
+        var state = run.snapshot("test", 1);
+        assertEquals(List.of(0.0, 300.0, 600.0), state.routeCumulativeMeters());
+        assertEquals(2, state.routeOptions().size());
+        var selected = state.routeOptions().getFirst();
+        var rejected = state.routeOptions().getLast();
+        assertTrue(selected.selected());
+        assertFalse(rejected.selected());
+        assertNotEquals(selected.id(), rejected.id());
+        assertEquals(150 - 300 / SimulationSettings.DEFAULT.maxSpeed(), selected.congestionDelaySeconds(), 1e-8);
+        assertTrue(rejected.congestionDelaySeconds() > selected.congestionDelaySeconds());
+        assertTrue(rejected.remainingSeconds() > selected.remainingSeconds());
+        assertEquals(List.of(A.lon(), A.lat()), selected.geometry().getFirst());
+        run.reset();
+        assertTrue(run.snapshot("test", 1).routeOptions().isEmpty());
     }
 
     @Test void peakQueueRepeatsStopsAndRaisesFuelUseOnTheSameRoad() {

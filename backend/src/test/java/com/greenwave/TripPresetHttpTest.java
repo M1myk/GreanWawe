@@ -215,6 +215,13 @@ class TripPresetHttpTest {
                 assertEquals(paused.get("simulationTimeSeconds"), run.get("simulationTimeSeconds"));
             }
             assertTrue(((Number) paused.get("simulationTimeSeconds")).doubleValue() > 0);
+            assertEquals(List.of(), runs(paused).getFirst().get("routeOptions"));
+            var options = assertInstanceOf(List.class, runs(paused).getLast().get("routeOptions"));
+            assertEquals(2, options.size());
+            var selected = assertInstanceOf(Map.class, options.getFirst());
+            assertEquals(true, selected.get("selected"));
+            assertInstanceOf(List.class, selected.get("geometry"));
+            assertInstanceOf(Number.class, selected.get("remainingSeconds"));
             Thread.sleep(240);
             assertEquals(paused, object(send("GET", path, null).body()));
             var faster = compareCommand(path, "speed", revision(paused), "SET_PLAYBACK_RATE");

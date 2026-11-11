@@ -1925,6 +1925,14 @@
                 ],
                 "minimum": 0,
                 "description": "Estimated gasoline consumed by the shared 2.0 L reference vehicle. Null for legacy results."
+              },
+              "accelerationFuelLiters": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Transient acceleration correction already included in fuelLiters."
               }
             }
           },
@@ -2051,6 +2059,52 @@
             ],
             "minimum": 0,
             "maximum": 10
+          },
+          "routeOptions": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "selected",
+                "geometry",
+                "remainingSeconds",
+                "signalWaitSeconds",
+                "congestionDelaySeconds"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "selected": {
+                  "type": "boolean"
+                },
+                "geometry": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "number"
+                    }
+                  }
+                },
+                "remainingSeconds": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "signalWaitSeconds": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "congestionDelaySeconds": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            }
           },
           "queueMotion": {
             "type": [

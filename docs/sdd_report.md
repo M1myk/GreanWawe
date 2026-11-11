@@ -167,3 +167,17 @@ Maven verify passed 44 tests. Coverage includes deterministic and nested profile
 Codex replaced the constant congested speed with a deterministic shared stop-and-go corridor cycle. GreenWave estimates travel time with the mean corridor speed. Both engines follow the same braking and acceleration bounds, and gasoline consumption is integrated from the actual motion and idle time.
 
 Maven verify passed 45 tests, including repeated queue stops, both engines producing the same motion on an identical route, and over 30% higher estimated gasoline use on the same 800 m test road in the heaviest queue. The frontend production build passed. In a browser run using the synthetic peak-hour route, both vehicles alternated between standstill and 10 km/h, and their fuel counters increased.
+
+## Transient gasoline use and maneuver-aware routing
+
+Codex added the EPA Mazda 2.0 acceleration transient to the fuel model using an approximate engine-speed proxy. The comparison shows the transient contribution within total fuel. The original OSM extracts supplied the available motorcar turn restrictions and roundabout metadata. Both route searches now carry turn state, and GreenWave retains the committed prefix and adds an estimated cost for significant street changes. Conditional and untagged restrictions remain outside the model.
+
+Maven verify passed 49 tests, including imported Gdańsk journeys, committed via-way restrictions, roundabout re-entry rejection, a small detour decision and transient gasoline from launch. Five offline Python importer tests passed and regenerating V7 from the cached source extracts produced the same bytes. The frontend production build and git diff --check passed.
+
+## Congestion-aware route selection and map alternatives
+
+Codex traced a missing active-edge queue observation and a route switch driven by marginal projected gains. The planner now applies the queue moving fraction to the effective cap, includes the committed approach in the forecast, and adds half the congestion delay as a ranking preference. Significant turns and side-road transitions contribute estimated time. The routing margin is five seconds or five percent, whichever is greater, in the cases defined by the navigation specification. These values are simulation heuristics.
+
+The comparison API publishes the distinct paths from the latest evaluation and their estimated remaining time, signal wait and congestion delay. React draws the alternatives in violet and lets the operator highlight one. Added regression checks for active-edge queue observations, the congestion bypass, path publication, a marginal side-road gain and the comparison response.
+
+Maven test passed all 51 tests, including 18 sampled Gdańsk journeys and HTTP serialization of the route alternatives. The frontend production build, OpenAPI JSON parsing and git diff --check passed. The new overlays were not checked in a browser during this change.

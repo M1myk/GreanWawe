@@ -56,8 +56,18 @@ record SimulationTraffic(Map<String, Double> caps, Map<String, QueueWave> queues
     double limit(Edge edge) { return caps.getOrDefault(edge.id(), Double.POSITIVE_INFINITY); }
 
     double expectedSpeed(Edge edge) {
+        return observeSpeed(edge).expectedSpeed(edge.speedLimitMps());
+    }
+
+    SpeedObservation observeSpeed(Edge edge) {
         var wave = queues.get(edge.id());
-        return wave == null ? limit(edge) : wave.expectedSpeed(limit(edge));
+        return new SpeedObservation(limit(edge), wave == null ? 1 : wave.movingFraction());
+    }
+
+    record SpeedObservation(double cap, double movingFraction) {
+        double expectedSpeed(double normalCap) {
+            return Math.min(cap, normalCap) * movingFraction;
+        }
     }
 
     double targetSpeed(Edge edge, int tick) {
@@ -80,8 +90,8 @@ record SimulationTraffic(Map<String, Double> caps, Map<String, QueueWave> queues
 
         private int cycleTicks() { return movingTicks + stoppedTicks + 2 * RAMP_TICKS; }
 
-        double expectedSpeed(double cap) {
-            return cap * (movingTicks + RAMP_TICKS) / cycleTicks();
+        double movingFraction() {
+            return (double) (movingTicks + RAMP_TICKS) / cycleTicks();
         }
 
         double factorAt(int tick) {

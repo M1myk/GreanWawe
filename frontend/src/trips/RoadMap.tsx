@@ -9,6 +9,9 @@ import { useVehiclePosition } from './useVehiclePosition';
 
 const runColors: Record<Algorithm, string> = { ASTAR: '#1458bf', GREENWAVE: '#087a48' };
 
+const alternativeColor = '#7136ad';
+const forecastSeconds = (seconds: number) => Math.round(seconds).toLocaleString('pl-PL') + ' s';
+
 const MIN_ZOOM = -2;
 const MAX_ZOOM = 7;
 const clampZoom = (zoom: number) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
@@ -59,6 +62,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   const [drivingZoom, setDrivingZoom] = useState(5);
   const driving = drivingKey === routeKey && Boolean(simulation);
   const [follow, setFollow] = useState<Algorithm>('ASTAR');
+  const [highlightedOption, setHighlightedOption] = useState<string>();
   const astar = simulation?.runs[0];
   const greenWave = simulation?.runs[1];
   const astarPosition = useVehiclePosition(astar);
@@ -79,6 +83,11 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
     { algorithm: 'ASTAR' as const, points: routePoints(astar?.routeGeometry ?? route?.geometry) },
     { algorithm: 'GREENWAVE' as const, points: routePoints(greenWave?.routeGeometry) },
   ], [astar?.routeGeometry, greenWave?.routeGeometry, route?.geometry]);
+
+  const options = greenWave?.routeOptions;
+  const alternativeLines = useMemo(() => options?.filter(option => !option.selected).map(option => ({
+    id: option.id, points: routePoints(option.geometry),
+  })) ?? [], [options]);
 
   useEffect(() => {
     if (!fullScreen || !start || !destination) return;
@@ -245,6 +254,24 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
       {simulation ? 'Trasy porównania' : !route ? 'Wyznaczanie trasy…' : route.lengthM === undefined ? 'Nie udało się wyznaczyć dojazdu.'
         : `Trasa samochodowa · ${(route.lengthM / 1000).toLocaleString('pl', { maximumFractionDigits: 2 })} km`}
     </p>}
+    {options && options.length > 0 && <details className="route-options">
+      <summary>Warianty GreenWave · {options.length}</summary>
+      <p>Ostatnia ocena od miejsca przeliczenia trasy</p>
+      <ol>
+        {options.map((option, index) => {
+          const label = option.selected ? 'Wybrana trasa' : `Alternatywa ${index}`;
+          return <li key={option.id}>
+            {option.selected ? <strong>{label}</strong> :
+              <button type="button" aria-pressed={highlightedOption === option.id}
+                onClick={() => setHighlightedOption(current => current === option.id ? undefined : option.id)}>
+                {label}
+              </button>}
+            <span>Do celu {forecastSeconds(option.remainingSeconds)} · Światła {forecastSeconds(option.signalWaitSeconds)}
+              {' · Korki +'}{forecastSeconds(option.congestionDelaySeconds)}</span>
+          </li>;
+        })}
+      </ol>
+    </details>}
     {route?.lengthM !== undefined && route.lengthM > 0 && <ComparisonControls key={routeKey}
       routeKey={routeKey} config={config} publish={setSimulationView} driving={driving} openDriving={openDriving} />}
     {drawing && !error && <p className="map-tip">Kliknij miejsce w zaznaczonym obszarze, aby ustawić pinezkę. Przeciągnij tło, aby przesunąć mapę.</p>}
@@ -341,6 +368,10 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
           <path d={trafficPaths.moderate} stroke="#ed8a21" opacity=".65" vectorEffect="non-scaling-stroke" />
           <path d={trafficPaths.heavy} stroke="#d73637" opacity=".75" vectorEffect="non-scaling-stroke" />
         </g>}
+      {geographic && alternativeLines.map(line => <polyline key={line.id} points={line.points}
+        fill="none" stroke={alternativeColor} strokeWidth={line.id === highlightedOption ? 7 : 3}
+        opacity={line.id === highlightedOption ? 1 : 0.65} strokeDasharray="4 6" strokeLinecap="round"
+        strokeLinejoin="round" vectorEffect="non-scaling-stroke" pointerEvents="none" />)}
       {geographic && routeLines.map(({ algorithm, points: line }) => line && <polyline key={algorithm}
         points={line} fill="none" stroke={runColors[algorithm]} strokeWidth={algorithm === 'ASTAR' ? 7 : 4}
         strokeDasharray={algorithm === 'GREENWAVE' ? '10 7' : undefined} strokeLinecap="round"

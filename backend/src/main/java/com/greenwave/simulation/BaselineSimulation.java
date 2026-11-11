@@ -3,6 +3,8 @@ package com.greenwave.simulation;
 import com.greenwave.network.NetworkController.Edge;
 import com.greenwave.network.NetworkController.Network;
 import com.greenwave.network.RoadRoute;
+import com.greenwave.network.RoadRules;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -10,6 +12,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 final class BaselineSimulation {
     static final double STEP = 0.1;
@@ -24,7 +28,7 @@ final class BaselineSimulation {
     record Signal(String id, List<Double> position, SignalProgram.Phase phase,
                   Double remainingPhaseSeconds, SignalProgram.Type type) {}
     record Metrics(double distanceM, double elapsedSeconds, Double travelTimeSeconds,
-                   int stopCount, double stoppedTimeSeconds, double speedVariationMps, Double fuelLiters) {}
+                   int stopCount, double stoppedTimeSeconds, double speedVariationMps, Double fuelLiters, Double accelerationFuelLiters) {}
     enum QueueMotion { MOVING, ACCELERATING, BRAKING, STOPPED }
     enum JunctionType { SIGNAL, JUNCTION }
     record Upcoming(JunctionType type, String nextStreet, double distanceM, Double estimatedSeconds,
@@ -32,10 +36,16 @@ final class BaselineSimulation {
     record Navigation(String currentStreet, Upcoming upcoming) {}
     record GreenApproach(double targetSpeedMps, double estimatedCrossingSeconds, double greenRemainingSeconds) {}
     private record GreenPlan(String signalId, int boostThrough, int greenEnd, double crossingTick, double target) {}
+    record RouteOption(String id, boolean selected, List<List<Double>> geometry, double remainingSeconds,
+                       double signalWaitSeconds, double congestionDelaySeconds) {}
     record Snapshot(String id, Status status, double simulationTimeSeconds, double playbackRate,
                     List<List<Double>> routeGeometry, List<Double> routeCumulativeMeters, Vehicle vehicle, double effectiveMaxSpeedMps,
                     List<Signal> signals, Metrics metrics, String failure, Navigation navigation, Algorithm algorithm, GreenApproach greenApproach, boolean coasting,
-                    Double fuelFlowLitersPerHour, Integer routeCandidates, QueueMotion queueMotion) {}
+                    Double fuelFlowLitersPerHour, Integer routeCandidates, List<RouteOption> routeOptions, QueueMotion queueMotion) {
+        Snapshot {
+            routeOptions = routeOptions == null ? List.of() : List.copyOf(routeOptions);
+        }
+    }
     private record YellowDecision(int phaseStart, boolean mayEnter) {}
 
     private final List<Edge> initialEdges;
@@ -45,9 +55,12 @@ final class BaselineSimulation {
     private final GreenWavePlanner planner;
     private final SimulationSettings settings;
     private final SimulationTraffic traffic;
+    private final RoadRules rules;
     private final Map<String, YellowDecision> decisions = new HashMap<>();
     private SimulationSignals signals;
     private List<Edge> edges;
+    private List<RouteOption> routeOptions = List.of();
+    private List<RoadRules.Context> routeContexts;
     private List<StopLine> stopLines;
     private RoadRoute route;
     private double[] edgeStarts;
@@ -73,6 +86,7 @@ final class BaselineSimulation {
     private int stoppedTicks;
     private double speedVariation;
     private double fuelLiters;
+    private double accelerationFuelLiters;
     private QueueMotion queueMotion;
     private String failure;
 
@@ -97,6 +111,7 @@ final class BaselineSimulation {
                        Network network, SimulationSettings settings, SimulationTraffic traffic) {
         initialEdges = List.copyOf(edges);
         this.traffic = traffic;
+        rules = network == null ? RoadRules.EMPTY : network.rules();
         this.settings = settings;
         this.seed = seed;
         this.scenario = scenario;
@@ -107,6 +122,15 @@ final class BaselineSimulation {
 
     private void setRoute(List<Edge> routeEdges) {
         edges = List.copyOf(routeEdges);
+        var contexts = new ArrayList<RoadRules.Context>();
+        var context = RoadRules.START;
+        contexts.add(context);
+        for (var edge : edges) {
+            context = rules.enter(context, edge);
+            if (context == null) throw new IllegalArgumentException("Route contains a forbidden maneuver.");
+            contexts.add(context);
+        }
+        routeContexts = List.copyOf(contexts);
         stopLines = signals.routeLines(edges);
         route = RoadRoute.fromEdges(edges);
         edgeStarts = new double[edges.size() + 1];
@@ -137,13 +161,14 @@ final class BaselineSimulation {
         coasting = false;
         fuelFlowLitersPerHour = 0;
         queueMotion = null;
+        routeOptions = List.of();
         if (planner != null) planner.resetCandidates();
         greenPlan = null;
         recoveryThrough = -1;
         decisions.clear();
         status = Status.READY;
         tick = edgeIndex = nextStopLine = stopTicks = stopCount = stoppedTicks = 0;
-        distance = speed = speedVariation = fuelLiters = 0;
+        distance = speed = speedVariation = fuelLiters = accelerationFuelLiters = 0;
         hasMoved = false;
         failure = null;
         setRoute(initialEdges);
@@ -198,9 +223,10 @@ final class BaselineSimulation {
             return;
         }
         double nextDistance = Math.min(distance + movement, Math.min(blockedAt, route.lengthM()));
-        double stepFuel = GasolineFuelModel.litersForStep(speed, nextSpeed, nextDistance - distance, STEP);
-        fuelLiters += stepFuel;
-        fuelFlowLitersPerHour = stepFuel * 3600 / STEP;
+        var stepFuel = GasolineFuelModel.step(speed, nextSpeed, nextDistance - distance, STEP);
+        fuelLiters += stepFuel.liters();
+        accelerationFuelLiters += stepFuel.transientLiters();
+        fuelFlowLitersPerHour = stepFuel.liters() * 3600 / STEP;
         distance = nextDistance;
         while (nextStopLine < stopLines.size()) {
             double line = stopLines.get(nextStopLine).distance();
@@ -290,7 +316,7 @@ final class BaselineSimulation {
         boolean atOrigin = tick == 0;
         double remaining = atOrigin ? 0 : edgeStarts[edgeIndex + 1] - distance;
         String node = atOrigin ? edge.fromNodeId() : edge.toNodeId();
-        var observed = planner.observe(node, remaining, this::signalObservation, traffic);
+        var observed = planner.observe(node, remaining, this::signalObservation, traffic, atOrigin ? null : edge);
         boolean recovering = edgeIndex <= recoveryThrough && speed > normalCap(edgeIndex) + EPSILON;
         if (!hasYellowCommitment() && !hasGreenPlan() && !recovering) replanRoute(atOrigin, observed);
         planApproach(observed.signals());
@@ -302,25 +328,49 @@ final class BaselineSimulation {
         while (!atOrigin && prefixSize < edges.size() && edgeStarts[prefixSize] - distance <= lockDistance) {
             prefixSize++;
         }
-        if (prefixSize >= edges.size()) return;
+        if (prefixSize >= edges.size()) {
+            routeOptions = List.of();
+            planner.resetCandidates();
+            return;
+        }
         var visited = new HashSet<String>();
-        double seconds = 0;
+        var estimate = new GreenWavePlanner.Estimate(0, 0, 0, 0);
         for (int i = 0; i < prefixSize; i++) {
             var edge = edges.get(i);
             visited.add(edge.fromNodeId());
             if (i < edgeIndex) continue;
-            seconds += (edgeStarts[i + 1] - Math.max(distance, edgeStarts[i])) / observed.speed(edge, settings.maxSpeed());
-            var signal = observed.signals().get(edge.toNodeId());
-            if (i < prefixSize - 1 && signal != null) seconds += signal.waitSeconds(seconds);
+            double meters = edgeStarts[i + 1] - Math.max(distance, edgeStarts[i]);
+            estimate = planner.traverse(estimate, i == edgeIndex ? null : edges.get(i - 1), edge, meters, true, observed);
         }
         String anchor = edges.get(prefixSize).fromNodeId();
         var incumbent = edges.subList(prefixSize, edges.size());
-        var suffix = planner.chooseSuffix(anchor, seconds, !atOrigin, incumbent, visited, observed);
+        var suffix = planner.chooseSuffix(anchor, estimate, incumbent, visited, observed, routeContexts.get(prefixSize));
+        var currentPosition = vehiclePosition();
+        var prefix = edges.subList(0, prefixSize);
+        routeOptions = planner.evaluated().stream()
+                .map(candidate -> routeOption(candidate, suffix, prefix, edgeIndex, currentPosition))
+                .toList();
         if (!suffix.equals(incumbent)) {
             var updated = new ArrayList<>(edges.subList(0, prefixSize));
             updated.addAll(suffix);
             setRoute(updated);
         }
+    }
+
+    private static RouteOption routeOption(GreenWavePlanner.Candidate candidate, List<Edge> selected,
+                                           List<Edge> prefix, int edgeIndex, List<Double> currentPosition) {
+        var path = new ArrayList<>(prefix);
+        path.addAll(candidate.edges());
+        var geometry = new ArrayList<List<Double>>();
+        geometry.add(currentPosition);
+        for (var edge : path.subList(edgeIndex, path.size())) {
+            geometry.addAll(edge.geometry().subList(1, edge.geometry().size()));
+        }
+        String edgeIds = path.stream().map(Edge::id).collect(Collectors.joining("\n"));
+        String id = UUID.nameUUIDFromBytes(edgeIds.getBytes(StandardCharsets.UTF_8)).toString();
+        var estimate = candidate.estimate();
+        return new RouteOption(id, candidate.edges().equals(selected), List.copyOf(geometry), estimate.arrival(),
+                estimate.waiting(), estimate.congestion());
     }
 
     private void planApproach(Map<String, GreenWavePlanner.Observation> observed) {
@@ -477,17 +527,20 @@ final class BaselineSimulation {
             Double remaining = state.remainingTicks() == null ? null : state.remainingTicks() * STEP;
             signals.add(new Signal(line.id(), line.position(), state.phase(), remaining, line.type()));
         }
+        return new Snapshot(id, status, time, rate, route.geometry(), routeCumulativeMeters, new Vehicle(vehiclePosition(), speed), settings.maxSpeed(),
+                List.copyOf(signals), new Metrics(distance, time, status == Status.COMPLETED ? time : null,
+                stopCount, stoppedTicks * STEP, speedVariation, fuelLiters, accelerationFuelLiters), failure, navigation(signals), algorithm, greenApproach(), status == Status.RUNNING && coasting,
+                status == Status.RUNNING ? fuelFlowLitersPerHour : 0, planner == null ? null : planner.candidatesEvaluated(), routeOptions,
+                status == Status.RUNNING || status == Status.PAUSED ? queueMotion : null);
+    }
+
+    private List<Double> vehiclePosition() {
         var edge = edges.get(edgeIndex);
         double fraction = Math.max(0, Math.min(1, (distance - edgeStarts[edgeIndex]) / edge.lengthM()));
         var a = edge.geometry().getFirst();
         var b = edge.geometry().getLast();
-        var position = List.of(a.get(0) + (b.get(0) - a.get(0)) * fraction,
+        return List.of(a.get(0) + (b.get(0) - a.get(0)) * fraction,
                 a.get(1) + (b.get(1) - a.get(1)) * fraction);
-        return new Snapshot(id, status, time, rate, route.geometry(), routeCumulativeMeters, new Vehicle(position, speed), settings.maxSpeed(),
-                List.copyOf(signals), new Metrics(distance, time, status == Status.COMPLETED ? time : null,
-                stopCount, stoppedTicks * STEP, speedVariation, fuelLiters), failure, navigation(signals), algorithm, greenApproach(), status == Status.RUNNING && coasting,
-                status == Status.RUNNING ? fuelFlowLitersPerHour : 0, planner == null ? null : planner.candidatesEvaluated(),
-                status == Status.RUNNING || status == Status.PAUSED ? queueMotion : null);
     }
 
     private boolean hasGreenPlan() {

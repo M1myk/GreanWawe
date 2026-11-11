@@ -12,6 +12,15 @@ export type QueueMotion = 'MOVING' | 'ACCELERATING' | 'BRAKING' | 'STOPPED';
 export const queueLabels: Record<QueueMotion, string> = {
   MOVING: 'Powolna jazda', ACCELERATING: 'Ruszanie', BRAKING: 'Hamowanie', STOPPED: 'Postój',
 };
+export interface RouteOption {
+  id: string;
+  selected: boolean;
+  geometry: Coordinate[];
+  remainingSeconds: number;
+  signalWaitSeconds: number;
+  congestionDelaySeconds: number;
+}
+
 export interface SimulationSnapshot {
   id: string;
   algorithm: Algorithm;
@@ -34,12 +43,12 @@ export interface SimulationSnapshot {
   coasting?: boolean;
   fuelFlowLitersPerHour?: number | null;
   queueMotion?: QueueMotion | null;
-  routeCandidates?: number | null;
+  routeOptions?: RouteOption[];
   greenApproach?: { targetSpeedMps: number; estimatedCrossingSeconds: number; greenRemainingSeconds: number } | null;
   vehicle: { position: Coordinate; speedMps: number };
   signals: { id: string; position: Coordinate; phase: 'GREEN' | 'YELLOW' | 'RED'; type: string }[];
   metrics: { distanceM: number; stopCount: number; stoppedTimeSeconds: number;
-    travelTimeSeconds: number | null; speedVariationMps: number; fuelLiters?: number | null };
+    travelTimeSeconds: number | null; speedVariationMps: number; fuelLiters?: number | null; accelerationFuelLiters?: number | null };
 }
 
 
@@ -198,7 +207,6 @@ export function ComparisonControls({ routeKey, config, publish, driving, openDri
       <p>Czas symulacji {seconds(snapshot.simulationTimeSeconds)}</p>
       <ComparisonMetrics snapshot={snapshot} />
       {snapshot.runs[1].coasting && <p>GreenWave · toczenie bez wtrysku paliwa</p>}
-      {(snapshot.runs[1].routeCandidates ?? 0) > 0 && <p>Warianty trasy GreenWave · {snapshot.runs[1].routeCandidates}</p>}
       {snapshot.runs.some(run => run.metrics.fuelLiters != null) &&
         <p className="note">Szacowane zużycie benzyny · Mazda 3 2.0</p>}
       {terminal && <p className="comparison-result">{resultText(snapshot)}</p>}
@@ -220,6 +228,8 @@ function ComparisonMetrics({ snapshot }: { snapshot: ComparisonSnapshot }) {
       : run.fuelFlowLitersPerHour.toLocaleString('pl', { maximumFractionDigits: 1 }) + ' l/h'],
     ['Benzyna', run => run.metrics.fuelLiters == null ? '—'
       : (run.metrics.fuelLiters * 1000).toLocaleString('pl', { maximumFractionDigits: 1 }) + ' ml'],
+    ['W tym korekta za przyspieszanie', run => run.metrics.accelerationFuelLiters == null ? '—'
+      : (run.metrics.accelerationFuelLiters * 1000).toLocaleString('pl', { maximumFractionDigits: 1 }) + ' ml'],
     ['Śr. spalanie', run => run.metrics.fuelLiters == null || run.metrics.distanceM < 10 ? '—'
       : (run.metrics.fuelLiters * 100000 / run.metrics.distanceM).toLocaleString('pl', { maximumFractionDigits: 1 }) + ' l/100 km'],
     ['Dystans', run => (run.metrics.distanceM / 1000).toLocaleString('pl', { maximumFractionDigits: 2 }) + ' km'],

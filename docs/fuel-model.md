@@ -18,3 +18,5 @@ Road-load work is road force times distance. The change in kinetic energy adds t
 - [ORNL report with Argonne idle measurements](https://info.ornl.gov/sites/publications/Files/Pub67767.pdf)
 
 For a predicted signal wait, GreenWave can release the throttle after reaching ordinary approach speed. Coast deceleration is road force divided by test mass plus a 0.15 m/s² engine-drag assumption, used when the configured braking ability permits that deceleration. The engine retains safety braking priority. Report zero injection only when the resulting tick has no positive tractive demand and stays above the cutoff.
+
+The transient correction adds 0.007 g per rad/s of positive estimated engine-speed change, with a 0.1 g/s cutoff. The coefficient and cutoff come from the EPA Mazda calibration. A continuous road-speed proxy uses first-gear and final-drive ratios up to 20 km/h, then the second-gear slope, with an assumed 0.315 m effective wheel radius. This is a simplified proxy for engine RPM. It adds about 1.1 mL when accelerating from 0 to 10 km/h at the default acceleration. The comparison displays this correction as a subset of total gasoline.

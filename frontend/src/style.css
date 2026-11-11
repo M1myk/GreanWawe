@@ -87,7 +87,7 @@ fieldset { border: 0; margin: 0; padding: 0; }
 .baseline-actions select { width: auto; padding: 4px 8px; }
 .route-panel .baseline-controls p { margin: 0; }
 
-.route-panel--driving > :not(.driving-summary, .baseline-controls) { display: none; }
+.route-panel--driving > :not(.driving-summary, .baseline-controls, .route-options) { display: none; }
 .driving-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
 .driving-heading div, .driving-next { display: grid; gap: 4px; }
 .driving-heading div > span { font-size: .8rem; }
@@ -122,3 +122,12 @@ fieldset { border: 0; margin: 0; padding: 0; }
 .traffic-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
 .traffic-swatch { width: 12px; border-top: 4px solid #ed8a21; border-radius: 2px; }
 .traffic-swatch.heavy { border-color: #d73637; margin-left: 6px; }
+
+
+.route-options { margin-top: 10px; font-size: .88rem; }
+.route-options summary { cursor: pointer; color: #602695; font-weight: 650; }
+.route-options ol { list-style: none; padding: 0; margin: 6px 0 0; }
+.route-options li { display: grid; gap: 4px; padding: 6px 0; border-bottom: 1px solid #e6deed; }
+.route-options li span { font-size: .8rem; }
+.route-options button { justify-self: start; padding: 4px 8px; background: #f0e6f8; color: #602695; }
+.route-options button[aria-pressed="true"] { background: #7136ad; color: white; }

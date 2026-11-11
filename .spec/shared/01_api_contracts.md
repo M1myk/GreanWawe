@@ -84,3 +84,5 @@ The machine-readable contract for implemented endpoints is [openapi.yaml](openap
 ## Stage 4 network reads
 
 GET /networks lists immutable network versions with actual bounds. GET /networks/{id} returns nodes and directed edges, including optional road names represented by empty strings when unavailable and geometry as two [longitude, latitude] coordinates. An unknown ID returns 404. The synthetic fixture is retained. The implemented schemas are in [OpenAPI](openapi.yaml).
+
+GreenWave run snapshots expose optional `routeOptions` with up to ten entries from the last evaluation, selected first. Each has a stable path identifier for the same sequence of edges, `selected`, `geometry` ([longitude, latitude] pairs), `remainingSeconds`, `signalWaitSeconds` and `congestionDelaySeconds`. Estimates are relative to the evaluation instant and may remain unchanged during a committed maneuver. `routeOptions` is empty before an evaluation or when no uncommitted route remains. A* returns an empty list.

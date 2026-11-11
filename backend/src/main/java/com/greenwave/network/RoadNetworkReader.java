@@ -10,9 +10,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class RoadNetworkReader {
     private final JdbcTemplate jdbc;
+    private final tools.jackson.databind.json.JsonMapper json;
 
-    public RoadNetworkReader(JdbcTemplate jdbc) {
+    public RoadNetworkReader(JdbcTemplate jdbc, tools.jackson.databind.json.JsonMapper json) {
         this.jdbc = jdbc;
+        this.json = json;
     }
 
     public NetworkList list() {
@@ -33,7 +35,12 @@ public class RoadNetworkReader {
                 """, (row, index) -> new Edge(row.getString(1), row.getString(2), row.getString(3),
                 row.getDouble(4), row.getDouble(5), row.getString(6),
                 List.of(coordinate(nodesById.get(row.getString(2))), coordinate(nodesById.get(row.getString(3))))), id);
-        return new Network(summary.id(), summary.version(), nodes, edges);
+        var sequences = jdbc.query("SELECT edge_sequence FROM road_turn_rule WHERE network_id=? ORDER BY edge_sequence",
+                (row, index) -> List.of(json.readValue(row.getString(1), String[].class)), id);
+        var circles = new java.util.HashMap<String, String>();
+        jdbc.query("SELECT edge_id, group_id FROM road_roundabout WHERE network_id=?",
+                (org.springframework.jdbc.core.RowCallbackHandler) row -> circles.put(row.getString(1), row.getString(2)), id);
+        return new Network(summary.id(), summary.version(), nodes, edges, new RoadRules(sequences, circles));
     }
 
     private static List<Double> coordinate(Node node) { return List.of(node.lon(), node.lat()); }

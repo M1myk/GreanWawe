@@ -23,7 +23,9 @@ class GreenWavePlannerTest {
 
     @Test void thirtySecondRouteLosesAtTenSecondsOfWaitingAndWinsBelowIt() {
         var viaB = List.of(edge(A, B, 100), edge(B, C, 200));
-        var viaDE = List.of(edge(A, D, 100), edge(D, E, 100), edge(E, C, 200));
+        var firstBend = new Node("first-bend", 54.3505, 18.65003);
+        var secondBend = new Node("second-bend", 54.351, 18.65004);
+        var viaDE = List.of(edge(A, firstBend, 100), edge(firstBend, secondBend, 100), edge(secondBend, C, 200));
         var planner = planner(viaB, viaDE);
         assertEquals(viaDE, planner.chooseSuffix(A.id(), 0, false, viaB, Set.of(),
                 Map.of(B.id(), fixed(400))));
@@ -227,6 +229,8 @@ class GreenWavePlannerTest {
         assertEquals(12, observed.size());
         var chosen = planner.chooseSuffix(A.id(), 0, false, edges.subList(0, 2), Set.of(), observed);
         assertEquals(10, planner.candidatesEvaluated());
+        assertEquals(10, planner.evaluated().stream().map(GreenWavePlanner.Candidate::edges).distinct().count());
+        assertEquals(chosen, planner.evaluated().getFirst().edges());
         assertEquals(edges.subList(0, 2), chosen);
     }
 
@@ -237,7 +241,7 @@ class GreenWavePlannerTest {
         var network = new Network("test", "v1", List.of(A, B, C, D, E),
                 List.of(first, incumbent.get(1), incumbent.get(2), detour.get(1), detour.get(2)));
         var scenario = new SimulationSignals.Scenario(Set.of(), Map.of(C.id(),
-                new SimulationSignals.Definition(SignalProgram.Type.FIXED, 0)));
+                new SimulationSignals.Definition(SignalProgram.Type.FIXED, 480)));
         var settings = new SimulationSettings(50 / 3.6, 2, 3, 500, 10, 18000);
         var engine = new BaselineSimulation(incumbent, 42, scenario, BaselineSimulation.Algorithm.GREENWAVE, network, settings);
         engine.status(BaselineSimulation.Status.RUNNING);

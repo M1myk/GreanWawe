@@ -28,5 +28,10 @@ public class NetworkController {
     public record NetworkList(List<Summary> items) { }
     public record Node(String id, double lat, double lon) { }
     public record Edge(String id, String fromNodeId, String toNodeId, double lengthM, double speedLimitMps, String name, List<List<Double>> geometry) { }
-    public record Network(String id, String version, List<Node> nodes, List<Edge> edges) { }
+    public record Network(String id, String version, List<Node> nodes, List<Edge> edges,
+                          @com.fasterxml.jackson.annotation.JsonIgnore RoadRules rules) {
+        public Network(String id, String version, List<Node> nodes, List<Edge> edges) {
+            this(id, version, nodes, edges, RoadRules.EMPTY);
+        }
+    }
 }

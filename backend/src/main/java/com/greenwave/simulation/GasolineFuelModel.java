@@ -7,6 +7,10 @@ final class GasolineFuelModel {
     private static final double NEWTONS_PER_LBF = 4.448221615;
     private static final double DRIVETRAIN_EFFICIENCY = 0.88;
     private static final double GASOLINE_GRAMS_PER_LITER = 745;
+    private static final double TRANSIENT_GRAMS_PER_RAD_PER_SECOND = 0.007;
+    private static final double FINAL_DRIVE = 3.59;
+    private static final double WHEEL_RADIUS_M = 0.315;
+    private static final double LOW_GEAR_END_MPS = 20 / 3.6;
     static final double CUTOFF_MPS = 20 / 3.6;
     private static final double[] POWER_KW = {0, 5, 15, 30, 60};
     private static final double[] GRAMS_PER_KWH = {650, 500, 335, 270, 245};
@@ -14,17 +18,32 @@ final class GasolineFuelModel {
     private GasolineFuelModel() {}
 
     static double litersForStep(double before, double after, double meters, double seconds) {
+        return step(before, after, meters, seconds).liters();
+    }
+
+    record Step(double liters, double transientLiters) {}
+
+    static Step step(double before, double after, double meters, double seconds) {
         double meanSpeed = (before + after) / 2;
         double roadForce = roadForce(meanSpeed);
         double kineticChange = 0.5 * TEST_MASS_KG * (after * after - before * before);
         double wheelJoules = kineticChange + roadForce * meters;
         double idle = IDLE_LITERS_PER_SECOND * seconds;
         if (wheelJoules <= 0) {
-            return after < before && meanSpeed >= CUTOFF_MPS ? 0 : idle;
+            return new Step(after < before && meanSpeed >= CUTOFF_MPS ? 0 : idle, 0);
         }
         double engineJoules = wheelJoules / DRIVETRAIN_EFFICIENCY;
         double powerKw = engineJoules / (seconds * 1000);
-        return Math.max(idle, engineJoules / 3_600_000 * specificFuel(powerKw) / GASOLINE_GRAMS_PER_LITER);
+        double grams = TRANSIENT_GRAMS_PER_RAD_PER_SECOND * Math.max(0, engineSpeed(after) - engineSpeed(before));
+        double transientLiters = grams / seconds >= 0.1 ? grams / GASOLINE_GRAMS_PER_LITER : 0;
+        double steady = engineJoules / 3_600_000 * specificFuel(powerKw) / GASOLINE_GRAMS_PER_LITER;
+        return new Step(Math.max(idle, steady) + transientLiters, transientLiters);
+    }
+
+    private static double engineSpeed(double roadSpeed) {
+        double low = Math.min(roadSpeed, LOW_GEAR_END_MPS);
+        double high = Math.max(0, roadSpeed - LOW_GEAR_END_MPS);
+        return (3.552 * low + 2.022 * high) * FINAL_DRIVE / WHEEL_RADIUS_M;
     }
 
     static double coastingDeceleration(double speed) {
