@@ -49,4 +49,6 @@ Use the versioned `gdansk-v1` OpenStreetMap road extract and a local SVG rendere
 
 ## Stage 6 simulation defaults
 
-The user requested slowing at intersections and during turns. The implementation uses a 30 km/h junction cap and 20/15 km/h caps at heading changes of at least 30°/60° as model defaults. The GreenWave implementation uses the proposed 500 m observation range, one-second interval and two-second route improvement threshold. The current edge and the braking approach to its next turn stay committed.
+The user requested slowing at intersections and during turns. The implementation uses a 30 km/h junction cap and 20/15 km/h caps at heading changes of at least 30°/60° as model defaults. The GreenWave implementation uses the proposed 500 m observation range, and one-second decision interval. The time-dependent route update removes the initial two-second switch threshold and prefers less waiting when arrival times tie. The current edge and the braking approach to its next turn stay committed.
+
+The wider GreenWave planner raises the default observation range to 1,500 m and evaluates up to ten route variants. Earlier saved configurations retain their recorded range.

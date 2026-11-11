@@ -131,3 +131,33 @@ Codex implemented the GreenWave planner in the existing single-run API and added
 An imported Gdańsk route exposed a late yellow decision when the vehicle braked for a turn. The engine now forecasts the crossing before committing to yellow entry, using the maneuver constraints and a conservative downstream stop assumption. Once committed, it holds the route and suppresses advisory slowdown until the line is crossed.
 
 Maven verify passed 27 tests, including 18 imported origin–destination pairs driven with both algorithms, the three maneuver caps, the fixed-light speed recommendation, replanning with a preserved current edge, pedestrian timeline isolation and HTTP algorithm selection. The frontend production build and git diff --check passed.
+
+## Stage 7 — paired comparison
+
+Codex integrated both engines under one comparison clock, added revision-aware controls and a single atomic SQLite row for the terminal snapshot. The map renders both routes and vehicles and can follow either one. Saved trip settings can populate the comparison configuration.
+
+Maven verify passed 30 tests, including shared timing, replay at 1× and 5×, frozen arrival metrics, timeout, stale commands, stored result retrieval and reset. The frontend production build and git diff --check passed. The browser run from Łozy to Gdańska exercised both vehicles, follow switching, pause, playback speed and the final table. A* arrived in 110.2 s and GreenWave in 109.2 s. A backend restart using the same temporary SQLite database returned the identical completed result and reported BACKEND_RESTARTED for an interrupted comparison.
+
+## Arrival-time routing
+
+Codex replaced fixed signal penalties with route-specific arrival estimates at directed graph vertices. Waiting at each observed signal shifts later arrival estimates. Equal estimated arrivals favor lower predicted waiting when comparing candidate routes. The committed edge and braking approach remain protected.
+
+Maven verify passed 33 tests, including the 30 s versus 40 s example, a delay that changes the phase at a second signal, and the signal at the end of the committed edge. The imported Gdańsk route regression and git diff --check also passed.
+
+## Green-window acceleration and estimated gasoline use
+
+Codex added a GreenWave-only target speed to reach the current green, with a simulation allowance of at most 20 km/h above the ordinary speed cap on the current segment. The shared vehicle engine still enforces acceleration, braking, junction and turn limits. The gasoline estimate uses a Mazda SKYACTIV-G 2.0 L reference model, with EPA engine and road-load data and a no-load idle figure reported by ORNL.
+
+Maven verify passed 38 tests. The tests cover feasible boost on 30 and 50 km/h roads, unreachable green, A* isolation, fuel consumption through stop and relaunch, legacy result compatibility and imported Gdańsk routes. The frontend production build passed. On the browser run from Łozy to Gdańska the comparison displayed 93.5 mL for A* and 73.4 mL for GreenWave.
+
+## Wider GreenWave planning and coasting
+
+Codex raised the default directed observation range to 1,500 m and added up to ten distinct route candidates. The planner reuses structural alternatives while evaluating fresh signal observations. The approach controller uses the full available green-window allowance across compatible segments. Where waiting is expected, it approaches at ordinary speed and then coasts within the available distance. Instant fuel flow and the last route candidate count are visible in the comparison.
+
+The imported-network smoke test exposed a braking-envelope boundary where the final fractional braking tick required more distance than continuous stopping distance predicted. Adding the discrete margin to the lookahead resolved the regression. Maven verify passed 40 tests, including ten distinct routes, extended observation, acceleration across split road segments and zero fuel flow after reaching cruising speed. The frontend production build passed. In the browser on Łozy to Gdańska, the panel displayed eight alternatives at departure and 0 L/h for GreenWave while coasting.
+
+## Simulated traffic modes
+
+Codex added three selectable traffic modes, deterministic speed caps shared by both vehicles, and a map layer that uses the same network, mode and seed as the comparison. A* follows its original route under the shared caps. GreenWave uses observed slowdowns when scoring routes. Saved presets retain the mode and missing modes default to free flow.
+
+Maven verify passed 44 tests. Coverage includes deterministic and nested profiles, shared braking limits, routing around observed traffic and saved configuration round trips. The frontend production build passed. In the browser, switching modes toggled the orange and red overlays and a peak-hour comparison started with both cars and the selected mode shown in the panel.

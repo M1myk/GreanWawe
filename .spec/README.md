@@ -1,6 +1,6 @@
 # GreenWave — MVP specification v0.2
 
-Date: 2026-11-10. Status: stages 2–6 implemented; the GreenWave comparison specification remains a draft for review. Documentation and code comments are written in English.
+Date: 2026-11-10. Status: stages 2–7 implemented; submission materials remain stage 8. Documentation and code comments are written in English.
 
 ## Goal
 
@@ -50,6 +50,6 @@ All phases, cycles and pedestrian requests are simulated by Java. Map-source met
 
 Update the specification first when an accepted requirement changes, followed by implementation and relevant tests.
 
-Stage 2 specification and verification criteria: [Project setup](features/project_setup.md). Health/CORS, the connection view, SQLite migrations and layered saved-trip CRUD are implemented. The Gdańsk road map, synthetic fixture and single-run simulations are available.
+Stage 2 specification and verification criteria: [Project setup](features/project_setup.md). Health/CORS, the connection view, SQLite migrations and layered saved-trip CRUD are implemented. The Gdańsk road map, synthetic fixture and both single-run simulations and paired comparisons are available.
 
 Implemented API schemas: [OpenAPI](shared/openapi.yaml). Stage 3 follows the authorized plan in features/trip_presets.md.

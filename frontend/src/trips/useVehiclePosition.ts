@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { SIMULATION_POLL_MS, type SimulationSnapshot } from './BaselineControls';
+import { SIMULATION_POLL_MS, type SimulationSnapshot } from './ComparisonControls';
 
 type Sample = { snapshot: SimulationSnapshot; distance: number };
 

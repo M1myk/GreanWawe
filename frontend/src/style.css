@@ -104,3 +104,21 @@ fieldset { border: 0; margin: 0; padding: 0; }
 @media (max-width: 760px) {
   .route-panel--driving { top: auto; bottom: 28px; max-height: 42%; }
 }
+
+.comparison-metrics { width: 100%; border-collapse: collapse; font-size: .82rem; font-variant-numeric: tabular-nums; }
+.comparison-metrics th, .comparison-metrics td { padding: 4px 5px; border-bottom: 1px solid #e3eae5; text-align: left; }
+.comparison-metrics th[scope="row"] { font-weight: 500; }
+.run-key { display: inline-block; width: 12px; margin-right: 5px; border-top: 3px solid #1458bf; vertical-align: middle; }
+.run-key.greenwave { border-top: 3px dashed #087a48; }
+.route-panel .comparison-result { padding: 8px; background: #edf5ef; border-radius: 6px; font-weight: 600; }
+.follow-options { display: flex; gap: 6px; margin-top: 8px; }
+.follow-options button { padding: 5px 10px; background: #edf3f0; color: #17352c; }
+.follow-options button[aria-pressed="true"] { background: #1458bf; color: white; }
+.follow-options button:last-child[aria-pressed="true"] { background: #087a48; }
+.route-header-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+
+.route-panel .traffic-select { margin: 10px 0 0; }
+.traffic-select select { padding: 6px 8px; }
+.traffic-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+.traffic-swatch { width: 12px; border-top: 4px solid #ed8a21; border-radius: 2px; }
+.traffic-swatch.heavy { border-color: #d73637; margin-left: 6px; }

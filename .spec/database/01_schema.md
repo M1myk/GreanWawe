@@ -4,6 +4,8 @@ SQLite serves one local backend instance. Store scenarios, configurations and re
 
 ## Logical schema
 
+The stage 7 storage section records how the logical comparison and result records are stored together.
+
 | Table | Keys and main fields |
 | --- | --- |
 | road_network | id PK, version, name, source_metadata_json, bounds_json |
@@ -39,4 +41,8 @@ Store the full configuration and name. UPDATE checks id and version; no match me
 
 V1 creates network/node/edge/scenario tables needed for referential and reachability validation and trip_preset. V2 inserts the explicitly approved synthetic fixture. Source metadata, edge geometry, signal programs and comparison/result tables remain later migrations; they are not falsely represented by empty runtime entities now. Runtime uses Spring Data JPA with Hibernate's community SQLite dialect and Xerial JDBC 3.54.1.0. Flyway 12.4.0 applies migrations. Each pooled connection enables foreign keys; pool size is 1 for the local single-instance MVP.
 
-trip_preset.version stores Hibernate's zero-based optimistic version, while API versions start at 1. Timestamp strings use fixed nine-digit fractional UTC formatting for stable SQL ordering. Default file: greenwave.db in the process working directory; override with GREENWAVE_DB_URL. Completed simulation persistence described above remains planned.
+trip_preset.version stores Hibernate's zero-based optimistic version, while API versions start at 1. Timestamp strings use fixed nine-digit fractional UTC formatting for stable SQL ordering. Default file: greenwave.db in the process working directory; override with GREENWAVE_DB_URL. Stage 7 adds completed comparison persistence as described below.
+
+## Stage 7 storage
+
+V6 stores one row per comparison with a scenario foreign key, status and a typed JSON snapshot containing configuration, versions and both run metrics. One statement replaces the status and snapshot on completion, failure or reset. Active tick state stays in memory. A persisted READY snapshot serves as the recovery record for an interrupted run. Restart marks these records FAILED with BACKEND_RESTARTED. Session release or expiry discards unfinished records.

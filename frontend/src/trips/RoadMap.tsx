@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
 import { request } from '../api/client';
-import { BaselineControls } from './BaselineControls';
-import type { SimulationSnapshot } from './BaselineControls';
+import { algorithmNames, ComparisonControls } from './ComparisonControls';
+import type { Algorithm, ComparisonSnapshot } from './ComparisonControls';
+import { defaultConfig, trafficLabels, trafficModes, type TrafficMode, type TripConfig } from './types';
 import { DrivingSummary } from './DrivingSummary';
 import { useVehiclePosition } from './useVehiclePosition';
+
+const runColors: Record<Algorithm, string> = { ASTAR: '#1458bf', GREENWAVE: '#087a48' };
 
 const MIN_ZOOM = -2;
 const MAX_ZOOM = 7;
 const clampZoom = (zoom: number) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
 
 interface Node { id: string; lat: number; lon: number }
-interface Network { nodes: Node[]; edges: { fromNodeId: string; toNodeId: string; name: string; lengthM: number }[] }
+interface Network { nodes: Node[]; edges: { id: string; fromNodeId: string; toNodeId: string; name: string; lengthM: number }[] }
 type Endpoint = 'startNodeId' | 'destinationNodeId';
 interface Point { x: number; y: number }
 interface PinDrag {
@@ -24,13 +27,16 @@ interface PinDrag {
 interface Props {
   networkId: string;
   fullScreen?: boolean;
+  comparisonConfig?: TripConfig;
+  onTrafficMode?: (mode: TrafficMode) => void;
+  resetMap?: () => void;
   openSaved?: () => void;
   start: string;
   destination: string;
   onSelect: (field: Endpoint, id: string) => void;
 }
 
-export function RoadMap({ networkId, start, destination, onSelect, fullScreen, openSaved }: Props) {
+export function RoadMap({ networkId, start, destination, onSelect, fullScreen, openSaved, comparisonConfig, resetMap, onTrafficMode }: Props) {
   const [network, setNetwork] = useState<Network>();
   const [error, setError] = useState(false);
   const [field, setField] = useState<Endpoint>('startNodeId');
@@ -39,15 +45,28 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   const [drag, setDrag] = useState<PinDrag>();
   const [hint, setHint] = useState('');
   const [preview, setPreview] = useState<{ key: string; geometry?: [number, number][]; lengthM?: number }>();
-  const [simulationView, setSimulationView] = useState<{ key: string; snapshot?: SimulationSnapshot }>();
-  const routeKey = JSON.stringify([networkId, start, destination]);
-  const route = preview?.key === routeKey ? preview : undefined;
+  const [simulationView, setSimulationView] = useState<{ key: string; snapshot?: ComparisonSnapshot }>();
+  const config = { ...defaultConfig, scenarioId: networkId, ...comparisonConfig, startNodeId: start, destinationNodeId: destination };
+  const routeKey = JSON.stringify([networkId, config]);
+  const previewKey = JSON.stringify([networkId, start, destination]);
+  const route = preview?.key === previewKey ? preview : undefined;
+  const trafficMode = config.trafficMode ?? 'NONE';
+  const trafficSeed = config.randomSeed;
+  const trafficKey = JSON.stringify([networkId, trafficMode, trafficSeed]);
+  const [trafficLayer, setTrafficLayer] = useState<{ key: string; segments?: { edgeId: string; speedFactor: number }[] }>();
   const simulation = simulationView?.key === routeKey ? simulationView.snapshot : undefined;
   const [drivingKey, setDrivingKey] = useState<string>();
   const [drivingZoom, setDrivingZoom] = useState(5);
   const driving = drivingKey === routeKey && Boolean(simulation);
-  const position = useVehiclePosition(simulation);
-  const vehiclePoint = position && project({ id: '', lon: position[0], lat: position[1] });
+  const [follow, setFollow] = useState<Algorithm>('ASTAR');
+  const astar = simulation?.runs[0];
+  const greenWave = simulation?.runs[1];
+  const astarPosition = useVehiclePosition(astar);
+  const greenWavePosition = useVehiclePosition(greenWave);
+  const followed = follow === 'ASTAR' ? astar : greenWave;
+  const runPoints = { ASTAR: projectPosition(astarPosition), GREENWAVE: projectPosition(greenWavePosition) };
+  const vehiclePoint = runPoints[follow];
+  const signals = [...new Map(simulation?.runs.flatMap(run => run.signals.map(signal => [signal.id, signal] as const))).values()];
 
   function openDriving() {
     setDrivingZoom(5);
@@ -56,7 +75,10 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
 
   function closeDriving() { setDrivingKey(undefined); }
 
-  const routeGeometry = simulation?.routeGeometry ?? route?.geometry;
+  const routeLines = useMemo(() => [
+    { algorithm: 'ASTAR' as const, points: routePoints(astar?.routeGeometry ?? route?.geometry) },
+    { algorithm: 'GREENWAVE' as const, points: routePoints(greenWave?.routeGeometry) },
+  ], [astar?.routeGeometry, greenWave?.routeGeometry, route?.geometry]);
 
   useEffect(() => {
     if (!fullScreen || !start || !destination) return;
@@ -65,12 +87,22 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
     void request<{ geometry: [number, number][]; lengthM: number }>(
       '/networks/' + encodeURIComponent(networkId) + '/route?' + query, { signal: controller.signal },
     ).then(result => {
-      if (!controller.signal.aborted) setPreview({ key: routeKey, ...result });
+      if (!controller.signal.aborted) setPreview({ key: previewKey, ...result });
     }).catch(() => {
-      if (!controller.signal.aborted) setPreview({ key: routeKey });
+      if (!controller.signal.aborted) setPreview({ key: previewKey });
     });
     return () => controller.abort();
-  }, [fullScreen, networkId, start, destination, routeKey]);
+  }, [fullScreen, networkId, start, destination, previewKey]);
+  useEffect(() => {
+    if (!fullScreen || trafficMode === 'NONE') return;
+    const controller = new AbortController();
+    const query = new URLSearchParams({ networkId, mode: trafficMode, seed: String(trafficSeed) });
+    void request<{ edgeId: string; speedFactor: number }[]>('/traffic?' + query, { signal: controller.signal })
+      .then(segments => { if (!controller.signal.aborted) setTrafficLayer({ key: trafficKey, segments }); })
+      .catch(() => { if (!controller.signal.aborted) setTrafficLayer({ key: trafficKey }); });
+    return () => controller.abort();
+  }, [fullScreen, networkId, trafficMode, trafficSeed, trafficKey]);
+
   function activate(next: Endpoint) {
     setHint('');
     setField(next);
@@ -86,8 +118,22 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
     return () => controller.abort();
   }, [networkId, retry]);
 
-  const geographic = Boolean(fullScreen && networkId !== 'synthetic-v1');
+  const geographic = Boolean(fullScreen);
   const drawing = useMemo(() => network ? drawNetwork(network, geographic) : undefined, [network, geographic]);
+  const trafficPaths = useMemo(() => {
+    if (!network || !drawing || trafficLayer?.key !== trafficKey || !trafficLayer.segments) return undefined;
+    const factors = new Map(trafficLayer.segments.map(segment => [segment.edgeId, segment.speedFactor]));
+    const paths = { moderate: '', heavy: '' };
+    for (const edge of network.edges) {
+      const factor = factors.get(edge.id);
+      const from = drawing.points.get(edge.fromNodeId);
+      const to = drawing.points.get(edge.toNodeId);
+      if (factor === undefined || !from || !to) continue;
+      const category = factor <= 0.5 ? 'heavy' : 'moderate';
+      paths[category] += `M${from.x},${from.y}L${to.x},${to.y}`;
+    }
+    return paths;
+  }, [network, drawing, trafficLayer, trafficKey]);
   const canvas = useRef<SVGSVGElement>(null);
   const [size, setSize] = useState({ width: 600, height: 420 });
   const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 0 });
@@ -158,8 +204,12 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   const panel = fullScreen && <section className={driving ? 'route-panel route-panel--driving' : 'route-panel'}
     aria-label={driving ? 'Widok jazdy' : 'Wybór punktów'}
     onKeyDown={event => { if (driving && event.key === 'Escape') closeDriving(); }}>
-    {driving && simulation && <DrivingSummary navigation={simulation.navigation} close={closeDriving} />}
-    <header><strong>GreenWave</strong><button type="button" onClick={openSaved}>Zapisane</button></header>
+    {driving && followed && <DrivingSummary navigation={followed.navigation} close={closeDriving}
+      algorithm={follow} onFollow={setFollow} greenApproach={followed.greenApproach} speedMps={followed.vehicle.speedMps} coasting={followed.coasting} />}
+    <header><strong>GreenWave</strong><div className="route-header-actions">
+      {resetMap && <button type="button" onClick={resetMap}>Mapa Gdańska</button>}
+      <button type="button" onClick={openSaved}>Zapisane</button>
+    </div></header>
     {(['startNodeId', 'destinationNodeId'] as const).map((key, index) => {
       const selected = index ? destination : start;
       return <EndpointField key={key + ':' + selected} label={index ? 'Dokąd' : 'Skąd'}
@@ -180,12 +230,23 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
     })}
     <p role="status">{error ? 'Nie udało się wczytać mapy.' : !drawing ? 'Wczytywanie mapy…'
       : hint || (field === 'startNodeId' ? 'Wybierasz A · start' : 'Wybierasz B · cel')}</p>
+    {onTrafficMode && <label className="traffic-select">Ruch samochodowy
+      <select value={trafficMode} onChange={event => onTrafficMode(event.target.value as TrafficMode)}>
+        {trafficModes.map(mode => <option key={mode} value={mode}>{trafficLabels[mode]}</option>)}
+      </select>
+    </label>}
+    {trafficMode !== 'NONE' && trafficPaths && <p className="traffic-legend">
+      <span className="traffic-swatch moderate" /> Spowolnienie
+      {trafficPaths.heavy && <> <span className="traffic-swatch heavy" /> Duże spowolnienie</>}
+    </p>}
+    {trafficMode !== 'NONE' && trafficLayer?.key === trafficKey && !trafficLayer.segments &&
+      <p role="status">Nie udało się wczytać warstwy ruchu.</p>}
     {start && destination && <p role="status">
-      {simulation ? 'Trasa bazowa A*' : !route ? 'Wyznaczanie trasy…' : route.lengthM === undefined ? 'Nie udało się wyznaczyć dojazdu.'
+      {simulation ? 'Trasy porównania' : !route ? 'Wyznaczanie trasy…' : route.lengthM === undefined ? 'Nie udało się wyznaczyć dojazdu.'
         : `Trasa samochodowa · ${(route.lengthM / 1000).toLocaleString('pl', { maximumFractionDigits: 2 })} km`}
     </p>}
-    {route?.lengthM !== undefined && route.lengthM > 0 && <BaselineControls key={routeKey}
-      routeKey={routeKey} networkId={networkId} start={start} destination={destination} publish={setSimulationView} driving={driving} openDriving={openDriving} />}
+    {route?.lengthM !== undefined && route.lengthM > 0 && <ComparisonControls key={routeKey}
+      routeKey={routeKey} config={config} publish={setSimulationView} driving={driving} openDriving={openDriving} />}
     {drawing && !error && <p className="map-tip">Kliknij miejsce w zaznaczonym obszarze, aby ustawić pinezkę. Przeciągnij tło, aby przesunąć mapę.</p>}
     {error && <button type="button" onClick={() => { setError(false); setRetry(value => value + 1); }}>Spróbuj ponownie</button>}
   </section>;
@@ -200,7 +261,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
     y: center.y - radius * 0.15 + camera.y,
   };
   const view = { x: focus.x - width / 2, y: focus.y - height / 2, width, height };
-  const tiles = geographic ? visibleTiles(view, scale) : [];
+  const tiles = geographic && networkId !== 'synthetic-v1' ? visibleTiles(view, scale) : [];
   const pinScale = geographic ? 1 / scale : 1;
   return <div className={fullScreen ? "map-surface" : undefined}>
     {!fullScreen && <div className="actions">
@@ -275,14 +336,16 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
         <rect x={bounds.x} y={bounds.y} width={bounds.width} height={bounds.height}
           fill="none" stroke="#1462bc" strokeWidth="1" vectorEffect="non-scaling-stroke" />
       </g>}
-      {geographic && routeGeometry && <polyline
-        points={routeGeometry.map(([lon, lat]) => {
-          const point = project({ id: '', lat, lon });
-          return `${point.x},${point.y}`;
-        }).join(' ')}
-        fill="none" stroke="#176be0" strokeWidth="5" strokeLinecap="round"
-        strokeLinejoin="round" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
-      {geographic && simulation?.signals.map(signal => {
+      {geographic && trafficPaths && (trafficPaths.moderate || trafficPaths.heavy) &&
+        <g aria-label="Symulowane spowolnienia" pointerEvents="none" fill="none" strokeWidth="10" strokeLinecap="round">
+          <path d={trafficPaths.moderate} stroke="#ed8a21" opacity=".65" vectorEffect="non-scaling-stroke" />
+          <path d={trafficPaths.heavy} stroke="#d73637" opacity=".75" vectorEffect="non-scaling-stroke" />
+        </g>}
+      {geographic && routeLines.map(({ algorithm, points: line }) => line && <polyline key={algorithm}
+        points={line} fill="none" stroke={runColors[algorithm]} strokeWidth={algorithm === 'ASTAR' ? 7 : 4}
+        strokeDasharray={algorithm === 'GREENWAVE' ? '10 7' : undefined} strokeLinecap="round"
+        strokeLinejoin="round" vectorEffect="non-scaling-stroke" pointerEvents="none" />)}
+      {geographic && signals.map(signal => {
         const [lon, lat] = signal.position;
         const point = project({ id: signal.id, lat, lon });
         const colors = { RED: '#d72c35', YELLOW: '#ffbf30', GREEN: '#14884c' };
@@ -357,11 +420,25 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
           <text y="-16" textAnchor="middle" fill="white" fontSize="12" fontWeight="700">{index ? 'B' : 'A'}</text>
         </g></g>;
       })}
-      {geographic && vehiclePoint && <g transform={`translate(${vehiclePoint.x} ${vehiclePoint.y}) scale(${pinScale * (driving ? 1.5 : 1.2)})`}
-        pointerEvents="none" aria-label="Pojazd w symulacji">
-        <circle r="10" fill="#124ba7" stroke="white" strokeWidth="2" />
-        <path d="M-5 2 V-1 L-3 -4 H3 L5 -1 V2 H4 V4 H2 V2 H-2 V4 H-4 V2 Z" fill="white" />
-      </g>}
+      {geographic && simulation?.runs.map(run => {
+        const point = runPoints[run.algorithm];
+        if (!point) return null;
+        const overlap = runPoints.ASTAR && runPoints.GREENWAVE &&
+          Math.hypot(runPoints.ASTAR.x - runPoints.GREENWAVE.x, runPoints.ASTAR.y - runPoints.GREENWAVE.y) * scale < 30;
+        const anchor = driving ? follow : 'ASTAR';
+        const offset = overlap && run.algorithm !== anchor ? 31 : 0;
+        const markerScale = pinScale * (driving && run.algorithm === follow ? 1.35 : 1);
+        return <g key={run.algorithm} transform={`translate(${point.x} ${point.y}) scale(${markerScale})`}
+          pointerEvents="none" aria-label={`Pojazd ${algorithmNames[run.algorithm]}`}>
+          {offset > 0 && <path d={`M0 0H${offset}`} stroke={runColors[run.algorithm]} strokeWidth="2" />}
+          <g transform={`translate(${offset} 0)`}>
+            <circle r="12" fill={runColors[run.algorithm]} stroke="white" strokeWidth="2" />
+            <text textAnchor="middle" dominantBaseline="central" fill="white" fontSize="10" fontWeight="700">
+              {run.algorithm === 'ASTAR' ? 'A*' : 'GW'}
+            </text>
+          </g>
+        </g>;
+      })}
     </svg>
     {panel}
     {geographic && <div className="map-controls" aria-label="Sterowanie mapą">
@@ -371,6 +448,17 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
     </div>}
     {networkId !== 'synthetic-v1' && <p className="map-credit"><a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a></p>}
   </div>;
+}
+
+function projectPosition(position?: [number, number]) {
+  return position && project({ id: '', lon: position[0], lat: position[1] });
+}
+
+function routePoints(geometry?: [number, number][]) {
+  return geometry?.map(position => {
+    const point = projectPosition(position)!;
+    return `${point.x},${point.y}`;
+  }).join(' ');
 }
 
 function adjustCamera(current: Point & { zoom: number }, baseScale: number, delta: number,

@@ -15,7 +15,7 @@ public class TripPresetMapper {
     public TripConfig toDomain(TripConfigRequest dto) {
         return new TripConfig(dto.scenarioId(), dto.startNodeId(), dto.destinationNodeId(), dto.randomSeed(),
                 new TripConfig.Vehicle(dto.vehicle().maxSpeedMps(), dto.vehicle().accelerationMps2(), dto.vehicle().brakingMps2()),
-                new TripConfig.Navigation(dto.navigation().observationRangeM(), dto.navigation().decisionIntervalSeconds()), dto.maxDurationSeconds());
+                new TripConfig.Navigation(dto.navigation().observationRangeM(), dto.navigation().decisionIntervalSeconds()), dto.maxDurationSeconds(), dto.trafficMode());
     }
     public String serialize(TripConfig config) { return json.writeValueAsString(config); }
     public TripPreset toDomain(TripPresetEntity entity) {
@@ -26,7 +26,7 @@ public class TripPresetMapper {
         var config = preset.config();
         var dto = new TripConfigResponse(config.scenarioId(), config.startNodeId(), config.destinationNodeId(), config.randomSeed(),
                 new TripConfigResponse.Vehicle(config.vehicle().maxSpeedMps(), config.vehicle().accelerationMps2(), config.vehicle().brakingMps2()),
-                new TripConfigResponse.Navigation(config.navigation().observationRangeM(), config.navigation().decisionIntervalSeconds()), config.maxDurationSeconds());
+                new TripConfigResponse.Navigation(config.navigation().observationRangeM(), config.navigation().decisionIntervalSeconds()), config.maxDurationSeconds(), config.trafficMode());
         return new TripPresetResponse(preset.id(), preset.name(), dto, preset.version(), preset.createdAt(), preset.updatedAt());
     }
 }

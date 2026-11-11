@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "GreenWave implemented API",
-    "version": "0.5.0",
-    "description": "Implemented health, scenarios, saved trips, road networks and baseline simulations. Comparison endpoints are planned."
+    "version": "0.7.0",
+    "description": "Health, scenarios, saved trips, road networks, single-run simulations and paired comparisons."
   },
   "servers": [
     {
@@ -832,6 +832,346 @@
           }
         }
       }
+    },
+    "/comparisons": {
+      "post": {
+        "operationId": "createComparison",
+        "responses": {
+          "201": {
+            "description": "Comparison response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonSnapshot"
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "State, revision or capacity conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TripConfig"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/comparisons/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getComparison",
+        "responses": {
+          "200": {
+            "description": "Comparison response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonSnapshot"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Comparison not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "releaseComparison",
+        "responses": {
+          "204": {
+            "description": "Comparison response"
+          },
+          "404": {
+            "description": "Comparison not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/comparisons/{id}/commands": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "commandComparison",
+        "responses": {
+          "200": {
+            "description": "Comparison response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonSnapshot"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Comparison not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "State, revision or capacity conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComparisonCommand"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/comparisons/{id}/result": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getComparisonResult",
+        "responses": {
+          "200": {
+            "description": "Comparison response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonSnapshot"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Comparison not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "State, revision or capacity conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/traffic": {
+      "get": {
+        "operationId": "getSimulatedTraffic",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "networkId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NONE",
+                "NORMAL",
+                "RUSH_HOUR"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "seed",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647,
+              "default": 42
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Simulated traffic overlay keyed by directed road edge",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "edgeId",
+                      "speedFactor"
+                    ],
+                    "properties": {
+                      "edgeId": {
+                        "type": "string"
+                      },
+                      "speedFactor": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "exclusiveMaximum": 1
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid mode or parameter format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Network not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Seed out of range",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -910,6 +1250,15 @@
             "type": "number",
             "minimum": 10,
             "maximum": 7200
+          },
+          "trafficMode": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "NORMAL",
+              "RUSH_HOUR"
+            ],
+            "default": "NONE"
           }
         },
         "required": [
@@ -1562,6 +1911,14 @@
               },
               "speedVariationMps": {
                 "type": "number"
+              },
+              "fuelLiters": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Estimated gasoline consumed by the shared 2.0 L reference vehicle. Null for legacy results."
               }
             }
           },
@@ -1644,6 +2001,196 @@
             "enum": [
               "ASTAR",
               "GREENWAVE"
+            ]
+          },
+          "greenApproach": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "required": [
+              "targetSpeedMps",
+              "estimatedCrossingSeconds",
+              "greenRemainingSeconds"
+            ],
+            "properties": {
+              "targetSpeedMps": {
+                "type": "number",
+                "minimum": 0
+              },
+              "estimatedCrossingSeconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "greenRemainingSeconds": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          },
+          "coasting": {
+            "type": "boolean"
+          },
+          "fuelFlowLitersPerHour": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "routeCandidates": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 10
+          }
+        }
+      },
+      "ComparisonCommand": {
+        "type": "object",
+        "required": [
+          "commandId",
+          "type",
+          "expectedRevision"
+        ],
+        "properties": {
+          "commandId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "START",
+              "PAUSE",
+              "RESUME",
+              "RESET",
+              "SET_PLAYBACK_RATE"
+            ]
+          },
+          "playbackRate": {
+            "type": "number",
+            "enum": [
+              0.5,
+              1,
+              2,
+              5
+            ]
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "ComparisonSnapshot": {
+        "type": "object",
+        "required": [
+          "id",
+          "revision",
+          "status",
+          "simulationTimeSeconds",
+          "playbackRate",
+          "config",
+          "networkVersion",
+          "scenarioVersion",
+          "engineVersion",
+          "createdAt",
+          "finishedAt",
+          "failure",
+          "runs",
+          "timeSavedSeconds",
+          "timeSavedPercent"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "enum": [
+              "READY",
+              "RUNNING",
+              "PAUSED",
+              "COMPLETED",
+              "FAILED"
+            ]
+          },
+          "simulationTimeSeconds": {
+            "type": "number"
+          },
+          "playbackRate": {
+            "type": "number"
+          },
+          "config": {
+            "$ref": "#/components/schemas/TripConfig"
+          },
+          "networkVersion": {
+            "type": "string"
+          },
+          "scenarioVersion": {
+            "type": "string"
+          },
+          "engineVersion": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "code",
+                  "message"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "runs": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "$ref": "#/components/schemas/SimulationSnapshot"
+            }
+          },
+          "timeSavedSeconds": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "timeSavedPercent": {
+            "type": [
+              "number",
+              "null"
             ]
           }
         }

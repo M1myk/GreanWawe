@@ -7,7 +7,7 @@ A full-stack web MVP for exploring how traffic signals affect urban journeys. Gr
 The planned application compares two virtual vehicles travelling across a small road network in Gdańsk:
 
 - **A*** chooses a baseline route using road travel costs.
-- **GreenWave** uses available information about nearby simulated signals to adjust speed and reconsider its route.
+- **GreenWave** uses available information about nearby simulated signals to adjust speed and reconsider its route. It estimates arrival at each signal along a candidate path and carries any waiting time forward to the next junction.
 
 Both runs use the same vehicle physics, simulation clock and pedestrian-event timeline. Results compare journey time, distance, stops, stopped time and speed variation. GreenWave is not assumed to win every comparison.
 
@@ -15,7 +15,7 @@ All signal phases, cycles and pedestrian requests are simulated by the backend. 
 
 ## Current status
 
-Stage 5 adds a single A* drive on the Gdańsk map, with simulated traffic lights, vehicle motion and journey metrics. Saved-trip CRUD and the versioned road graph use SQLite. Baseline sessions live in backend memory and disappear on restart. Stage 6 adds GreenWave as a selectable algorithm in the simulation API. Both algorithms apply the same 30 km/h intersection limit and 20 or 15 km/h turn limits, depending on the angle. The side-by-side map comparison is planned.
+The full-screen map runs A* and GreenWave together. Both cars share the same simulation time and signal conditions and apply the same maneuver speed limits. SQLite stores the final comparison result and saved trip configurations. The single-run API remains available for separate experiments.
 
 ## Planned MVP
 
@@ -65,7 +65,7 @@ I remain responsible for scope, design decisions, understanding the solution and
 | 4. Road network | Small Gdańsk extract, validated graph and map display | Implemented |
 | 5. Baseline simulation | Clock, signals, vehicle physics and A* | Implemented |
 | 6. GreenWave | Limited-observation routing and speed adaptation | Implemented in the API |
-| 7. Integration and verification | Controls, animation, results and reproducibility checks | Planned |
+| 7. Integration and verification | Controls, animation, results and reproducibility checks | Implemented |
 | 8. Submission | Verified setup guide, GIF/MP4 demo and public GitHub repository | Planned |
 
 The [implementation plan](.spec/implementation_plan.md) gives more detail. The approved 30 m yellow-light rule and open numerical defaults are recorded in the [decision register](.spec/decisions.md).
@@ -74,7 +74,7 @@ The [implementation plan](.spec/implementation_plan.md) gives more detail. The a
 
 I use **ChatGPT and Codex (OpenAI)** as engineering assistants and technical mentors. So far, AI has helped organize requirements, draft the architecture and specification, identify gaps and conflicting rules, define acceptance criteria, and prepare project documentation and `.gitignore`.
 
-In stage 2, AI also implemented the Java/React skeletons, configured CORS, prepared and ran three HTTP integration tests, built the frontend and checked browser connection, failure and recovery states. In stage 3, AI also prepared the layered preset implementation, migrations, OpenAPI contract, React CRUD UI and integration tests. Testing exposed an initial null-version getter bug; AI fixed it and reran the suite. In stage 5, AI implemented the baseline simulation, map controls and regression tests. Tests exposed an issue with the last braking increment; AI corrected the stopping calculation. In stage 6, AI implemented the signal-aware planner, the shared maneuver speed limits and the related tests. The product itself does not currently include an AI feature; its distinctive functionality is the GreenWave simulation.
+In stage 2, AI also implemented the Java/React skeletons, configured CORS, prepared and ran three HTTP integration tests, built the frontend and checked browser connection, failure and recovery states. In stage 3, AI also prepared the layered preset implementation, migrations, OpenAPI contract, React CRUD UI and integration tests. Testing exposed an initial null-version getter bug; AI fixed it and reran the suite. In stage 5, AI implemented the baseline simulation, map controls and regression tests. Tests exposed an issue with the last braking increment; AI corrected the stopping calculation. In stage 6, AI implemented the signal-aware planner, the shared maneuver speed limits and the related tests. In stage 7, AI connected both vehicle runs to a shared clock and built the comparison controls, map view, SQLite storage and regression tests. The product itself does not currently include an AI feature; its distinctive functionality is the GreenWave simulation.
 
 Agent behaviour and constraints are documented in [AGENTS.md](AGENTS.md). Actual activities, findings and verification are recorded in the [SDD report](docs/sdd_report.md). Private conversation exports and conversation links are excluded from public project materials.
 
@@ -125,7 +125,9 @@ npm run dev
 
 Open `http://localhost:5173` to see the full-screen Gdańsk road map. Search for an imported street in **Skąd** or **Dokąd**, or focus a field and click near a road on the map. Blue A marks the origin and red B marks the destination.
 
-Once a route is available, press **Rozpocznij teraz** to run the A* baseline and open Driving View. The camera follows the vehicle and shows the current street and the next junction or light. The estimate uses current speed. The × button restores the overview during the same run, and **Widok jazdy** reopens the camera. **Pauza** pauses the simulation, **Wznów** resumes it and **Reset** returns to the same initial state. **Tempo** changes playback speed without changing the physics. The map shows the moving car and the simulated signals along its route. The panel shows elapsed simulation time, speed, stops and time spent stopped. Changing either endpoint starts a new session when you next press **Start**. Stop each server with Ctrl+C.
+Once a route is available, press **Rozpocznij teraz** to start both cars. The blue line is A* and the dashed green line is GreenWave. Driving View follows the selected car and shows its current street and upcoming junction or light. Switch the followed car with the A* and GreenWave buttons, or use **×** to return to the overview. Use **Pauza**, **Wznów**, **Reset** and **Tempo** to control both runs together. The table compares travel time, distance, stops, stopped time, speed variation and estimated gasoline use. GreenWave can show a target speed to reach the current green window. Its simulation-only boost is at most 20 km/h above the ordinary cap on compatible approach segments. The default planner observes 1,500 m of directed roads and compares up to ten route variants. With predicted waiting, it accelerates normally before coasting toward the light. Both cars use the same [2.0 L fuel estimate](docs/fuel-model.md). Finished results remain available from GET /api/v1/comparisons/{id}/result after restart. Reset replaces the saved result. Stop each server with Ctrl+C.
+
+Choose **Bez natężenia**, **Zwykły ruch** or **Godziny szczytu** before starting. The orange and red map layers show simulated speed reductions. Both cars obey the same restrictions. GreenWave can account for observed congestion when comparing alternatives, while A* keeps its initial route. Selecting another mode prepares a new comparison. Saved presets retain the selected mode.
 
 To try GreenWave through the local API, create a single run and use the session ID from the response to start it:
 
@@ -140,7 +142,7 @@ curl -sS http://localhost:8080/api/v1/simulations/SESSION_ID/commands \
 curl -sS http://localhost:8080/api/v1/simulations/SESSION_ID
 ```
 
-Open **Zapisane** to manage named trip presets. The saved-trip form opens the Gdańsk extract. Use **Pick start** and **Pick destination**, then click near road nodes or select their IDs from the lists. Enter a name and save. For a minimal example, switch to the synthetic scenario and choose n1 → n3 or n1 → n2. Use Edit to load and update it; Delete asks for confirmation. Node n4 is isolated and demonstrates validation. Seed and numerical parameters are saved configuration values, not a running simulation.
+Open **Zapisane** to manage named trip presets. The saved-trip form opens the Gdańsk extract. Use **Pick start** and **Pick destination**, then click near road nodes or select their IDs from the lists. Enter a name and save. For a minimal example, switch to the synthetic scenario and choose n1 → n3 or n1 → n2. Use Edit to update it, Delete to remove it, or **Porównaj** to load the saved configuration onto the main map. Node n4 is isolated and demonstrates validation. The saved seed and numerical parameters are applied when you start the comparison.
 
 ### 3. Run checks and build
 
@@ -194,9 +196,9 @@ com.greenwave/
 resources/db/migration/      Versioned SQLite schema and synthetic fixture
 ```
 
-Entities are not exposed over HTTP. Public preset versions start at 1; stale edits return 409 and retain the form so the user can reload deliberately. Configurations are independently serializable; future comparisons will own their own copies.
+Entities are not exposed over HTTP. Public preset versions start at 1; stale edits return 409 and retain the form so the user can reload deliberately. Each comparison owns a copy of its configuration.
 
-Implemented endpoints are described in [OpenAPI](.spec/shared/openapi.yaml): health, scenario reads, road-network reads and full trip-preset CRUD and baseline simulation sessions. The broader Markdown contract also describes the planned comparison endpoints.
+Implemented endpoints are described in [OpenAPI](.spec/shared/openapi.yaml): health, scenario reads, road-network reads, full trip-preset CRUD, single-run sessions and paired comparison sessions.
 
 See [road data provenance](docs/road-network-data.md) for the extract bounds, licence and graph limitations.
 

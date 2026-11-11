@@ -1,6 +1,6 @@
 # Backend simulation rules
 
-The implemented single-run lifecycle and defaults are documented in the [stage 5 baseline specification](../features/baseline_simulation.md). Two-run lifecycle, shared scenarios and comparison persistence below describe the planned comparison.
+The implemented single-run lifecycle and defaults are documented in the [stage 5 baseline specification](../features/baseline_simulation.md). Stage 7 implements the two-run lifecycle, shared scenarios and comparison persistence below.
 
 ## Clock and lifecycle
 
@@ -50,3 +50,9 @@ When configuring the simulation, validate that approaches outside the threshold 
 Both algorithms use the same maneuver caps. Intermediate graph junctions with at least three distinct neighbors and simulated stop lines have a 30 km/h maximum. Any intermediate vertex with a heading change of at least 30° has a 20 km/h maximum. A change of at least 60°, including sharp bends and U-turn geometry, has a 15 km/h maximum. These are simulation defaults based on geometry. The applicable cap is the smallest of the maneuver, vehicle and road limits. Brake before the maneuver and hold the cap from 2 m before the vertex until 2 m after it, allowing one additional tick of braking margin before the zone. Stop lines and the destination retain priority.
 
 When yellow entry is considered, forecast the crossing under the active road and maneuver limits before committing. For an allowed crossing, hold the route and suspend advisory slowdown until the line is crossed. A conservative forecast also accounts for the next stop line and destination, so a nearby downstream stop cannot invalidate the commitment.
+
+## Estimated gasoline use
+
+Integrate one shared warmed-up gasoline 2.0 L reference model over successful vehicle ticks. Use rolling and aerodynamic road load, positive tractive work and a load-dependent conversion to fuel. Stationary ticks use idle flow. Low-speed braking without positive traction uses idle flow. Above the model cutoff threshold, deceleration without positive traction uses zero injection. A new acceleration after a stop consumes fuel through positive kinetic work. Fuel remains frozen after arrival and resets with the trip. Two trips with different routes or speeds may differ for reasons other than stop count.
+
+See [fuel model inputs](../../docs/fuel-model.md). The metrics field fuelLiters is nullable for older stored results. No database migration is needed.
