@@ -80,8 +80,9 @@ final class GreenWavePlanner {
             var observation = readVisibleSignal.apply(reach.node());
             if (observation != null) signals.put(reach.node(), observation);
             for (var edge : outgoing.getOrDefault(reach.node(), List.of())) {
-                Double cap = traffic.caps().get(edge.id());
-                if (cap != null) trafficCaps.put(edge.id(), cap);
+                if (traffic.caps().containsKey(edge.id())) {
+                    trafficCaps.put(edge.id(), traffic.expectedSpeed(edge));
+                }
                 double next = reach.meters() + edge.lengthM();
                 if (next > settings.observationRange() || next >= distances.getOrDefault(edge.toNodeId(), Double.POSITIVE_INFINITY)) continue;
                 distances.put(edge.toNodeId(), next);

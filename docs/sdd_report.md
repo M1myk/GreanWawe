@@ -161,3 +161,9 @@ The imported-network smoke test exposed a braking-envelope boundary where the fi
 Codex added three selectable traffic modes, deterministic speed caps shared by both vehicles, and a map layer that uses the same network, mode and seed as the comparison. A* follows its original route under the shared caps. GreenWave uses observed slowdowns when scoring routes. Saved presets retain the mode and missing modes default to free flow.
 
 Maven verify passed 44 tests. Coverage includes deterministic and nested profiles, shared braking limits, routing around observed traffic and saved configuration round trips. The frontend production build passed. In the browser, switching modes toggled the orange and red overlays and a peak-hour comparison started with both cars and the selected mode shown in the panel.
+
+## Stop-and-go traffic
+
+Codex replaced the constant congested speed with a deterministic shared stop-and-go corridor cycle. GreenWave estimates travel time with the mean corridor speed. Both engines follow the same braking and acceleration bounds, and gasoline consumption is integrated from the actual motion and idle time.
+
+Maven verify passed 45 tests, including repeated queue stops, both engines producing the same motion on an identical route, and over 30% higher estimated gasoline use on the same 800 m test road in the heaviest queue. The frontend production build passed. In a browser run using the synthetic peak-hour route, both vehicles alternated between standstill and 10 km/h, and their fuel counters increased.

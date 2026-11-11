@@ -1,11 +1,11 @@
-import { algorithmNames, type Algorithm, type SimulationSnapshot } from './ComparisonControls';
+import { algorithmNames, queueLabels, type QueueMotion, type Algorithm, type SimulationSnapshot } from './ComparisonControls';
 
 const phaseLabels = { GREEN: 'Zielone', YELLOW: 'Żółte', RED: 'Czerwone' };
 
-export function DrivingSummary({ navigation, close, algorithm, onFollow, greenApproach, speedMps, coasting }: {
+export function DrivingSummary({ navigation, close, algorithm, onFollow, greenApproach, speedMps, coasting, queueMotion }: {
   navigation: SimulationSnapshot['navigation']; close: () => void;
   algorithm: Algorithm; onFollow: (value: Algorithm) => void;
-  greenApproach: SimulationSnapshot['greenApproach']; speedMps: number; coasting?: boolean;
+  greenApproach: SimulationSnapshot['greenApproach']; speedMps: number; coasting?: boolean; queueMotion?: QueueMotion | null;
 }) {
   const upcoming = navigation?.upcoming;
   return <div className="driving-summary">
@@ -17,6 +17,7 @@ export function DrivingSummary({ navigation, close, algorithm, onFollow, greenAp
       {(['ASTAR', 'GREENWAVE'] as const).map(value => <button key={value} type="button"
         aria-pressed={algorithm === value} onClick={() => onFollow(value)}>{algorithmNames[value]}</button>)}
     </div>
+    {queueMotion && <div className="driving-next"><strong>Korek · {queueLabels[queueMotion]}</strong></div>}
     {algorithm === 'GREENWAVE' && coasting && <div className="driving-next">
       <strong>Toczenie do świateł</strong><span>Odcięcie wtrysku · 0 l/h</span>
     </div>}

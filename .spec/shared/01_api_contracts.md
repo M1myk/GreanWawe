@@ -37,7 +37,7 @@ The single-run simulation under `/simulations` accepts an optional `algorithm` f
 
 All fields are required. Proposed bounds: maxSpeedMps (0,40]; accelerationMps2 and brakingMps2 (0,10]; observationRangeM [50,2000]; decisionIntervalSeconds [0.1,10], a multiple of the tick; maxDurationSeconds [10,7200]; integer seed [0,2147483647]. Numbers must be finite. Nodes must belong to the scenario network and have a directed route. Identical endpoints return 422. The configured vehicle maximum caps ordinary travel. The shared stopping envelope limits speed near signals. GreenWave may advise up to 20 km/h above its ordinary cap on the current segment to reach a known green window. Duration is rounded down to a complete tick.
 
-The optional trafficMode accepts NONE, NORMAL and RUSH_HOUR. Missing or null values default to NONE, including older saved configurations. GET /traffic?networkId={id}&mode={mode}&seed={seed} returns affected edge IDs and speed factors for the selected scenario. The seed defaults to 42. The overlay and both cars use the same static simulated traffic model.
+The optional trafficMode accepts NONE, NORMAL and RUSH_HOUR. Missing or null values default to NONE, including older saved configurations. GET /traffic?networkId={id}&mode={mode}&seed={seed} returns affected edge IDs, estimated mean speed factors, and heavy-congestion flags for the selected scenario. The seed defaults to 42. The overlay and both cars use the same simulated traffic model. During a traffic queue, run snapshots include the current queueMotion (MOVING, ACCELERATING, BRAKING or STOPPED).
 
 ## Snapshot
 

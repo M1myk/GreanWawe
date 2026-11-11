@@ -1123,7 +1123,8 @@
                     "type": "object",
                     "required": [
                       "edgeId",
-                      "speedFactor"
+                      "speedFactor",
+                      "heavy"
                     ],
                     "properties": {
                       "edgeId": {
@@ -1132,7 +1133,12 @@
                       "speedFactor": {
                         "type": "number",
                         "exclusiveMinimum": 0,
-                        "exclusiveMaximum": 1
+                        "exclusiveMaximum": 1,
+                        "description": "Estimated mean queue speed divided by the posted limit."
+                      },
+                      "heavy": {
+                        "type": "boolean",
+                        "description": "Whether the overlay marks the corridor as heavy congestion."
                       }
                     }
                   }
@@ -2045,6 +2051,19 @@
             ],
             "minimum": 0,
             "maximum": 10
+          },
+          "queueMotion": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "MOVING",
+              "ACCELERATING",
+              "BRAKING",
+              "STOPPED",
+              null
+            ]
           }
         }
       },

@@ -8,6 +8,10 @@ type Coordinate = [number, number];
 export type Algorithm = 'ASTAR' | 'GREENWAVE';
 type Status = 'READY' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'TIMEOUT' | 'FAILED';
 type Command = 'START' | 'PAUSE' | 'RESUME' | 'RESET' | 'SET_PLAYBACK_RATE';
+export type QueueMotion = 'MOVING' | 'ACCELERATING' | 'BRAKING' | 'STOPPED';
+export const queueLabels: Record<QueueMotion, string> = {
+  MOVING: 'Powolna jazda', ACCELERATING: 'Ruszanie', BRAKING: 'Hamowanie', STOPPED: 'Postój',
+};
 export interface SimulationSnapshot {
   id: string;
   algorithm: Algorithm;
@@ -29,6 +33,7 @@ export interface SimulationSnapshot {
   };
   coasting?: boolean;
   fuelFlowLitersPerHour?: number | null;
+  queueMotion?: QueueMotion | null;
   routeCandidates?: number | null;
   greenApproach?: { targetSpeedMps: number; estimatedCrossingSeconds: number; greenRemainingSeconds: number } | null;
   vehicle: { position: Coordinate; speedMps: number };
@@ -206,6 +211,7 @@ export function ComparisonControls({ routeKey, config, publish, driving, openDri
 function ComparisonMetrics({ snapshot }: { snapshot: ComparisonSnapshot }) {
   const rows: Array<[string, (run: SimulationSnapshot) => string | number]> = [
     ['Stan', run => labels[run.status]],
+    ['Jazda w korku', run => run.queueMotion ? queueLabels[run.queueMotion] : '—'],
     ['Prędkość', run => Math.round(run.vehicle.speedMps * 3.6) + ' km/h'],
     ['Cel na zielone', run => run.greenApproach
       ? Math.round(run.greenApproach.targetSpeedMps * 3.6) + ' km/h' : '—'],

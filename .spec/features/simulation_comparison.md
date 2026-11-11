@@ -74,8 +74,14 @@ Verify lifecycle, revision conflicts, identical timelines, replay, timeout, pers
 
 ## Simulated traffic modes
 
-The configuration accepts NONE, NORMAL and RUSH_HOUR, with NONE for omitted values and historical configurations. Apply the same immutable, seed-based corridor speeds to both cars. Select named higher-speed corridors deterministically. NORMAL selects a subset at 70% of posted speed. RUSH_HOUR includes that subset and more corridors, at 45% or 60% of posted speed. The synthetic network has two explicitly slowed edges for tests. This model simulates congestion as fixed speeds for a run. There are no simulated surrounding vehicles or live traffic inputs.
+The configuration accepts NONE, NORMAL and RUSH_HOUR, with NONE for omitted values and historical configurations. Apply the same seed-based corridor profile to both cars. Select named higher-speed corridors deterministically. RUSH_HOUR includes the NORMAL subset and more corridors. The synthetic network has two explicitly slowed edges for tests. The selected corridors use the stop-and-go model below. There are no simulated surrounding vehicles or live traffic inputs.
 
 A* chooses its static route using ordinary road costs and obeys the simulated traffic speeds during movement. GreenWave includes observed congestion in its route estimates. The directed observation range and route commitment rules remain in force. Both cars brake in advance for slower edges. GreenWave boost cannot exceed the traffic cap on a congested edge.
 
 Show a mode selector and a colored traffic layer on the full-screen map. Keep the selection in saved configurations. Changing it prepares a new comparison. Expose a read-only traffic layer for a network, mode and seed. Use the same backend model as the paired run. No migration or dependency is needed.
+
+## Stop-and-go traffic
+
+Selected traffic corridors use a deterministic shared cycle of crawling, braking, standing and restarting. Ordinary traffic crawls up to 20 km/h with a 2 s standstill. Peak traffic crawls up to 14 km/h with a 4 s standstill, or up to 10 km/h with a 6 s standstill on the busiest corridors. Adjacent edges with the same road name and both directions share the same clock offset. Cap and acceleration constraints still apply, and signals and turns retain priority. The planner estimates congestion cost using mean cycle speed; the overlay uses the same estimate and labels the busiest corridors separately.
+
+Integrate fuel using the existing vehicle model, including idle and each acceleration. Surface the actual current queue motion in the comparison. Verify repeated stops, restart, fuel increase on a comparable route, fairness, and deterministic replay. No migration or dependency is needed.

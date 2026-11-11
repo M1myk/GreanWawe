@@ -68,6 +68,48 @@ class SimulationTrafficTest {
         assertEquals(main, planner.chooseSuffix(A.id(), 0, false, main, Set.of(), distant));
     }
 
+    @Test void peakQueueRepeatsStopsAndRaisesFuelUseOnTheSameRoad() {
+        var road = edge("e1", A, B, 800, "Main");
+        var network = new Network("synthetic-v1", "1", List.of(A, B), List.of(road));
+        var scenario = new SimulationSignals.Scenario(Set.of(), Map.of());
+        var peak = SimulationTraffic.create(network, TrafficMode.RUSH_HOUR, 42);
+        var regular = new BaselineSimulation(List.of(road), 42, scenario,
+                BaselineSimulation.Algorithm.ASTAR, network, SimulationSettings.DEFAULT, SimulationTraffic.EMPTY);
+        regular.status(BaselineSimulation.Status.RUNNING);
+        while (regular.status() == BaselineSimulation.Status.RUNNING) regular.advance();
+        var free = regular.snapshot("free", 1);
+        assertEquals(BaselineSimulation.Status.COMPLETED, free.status(), free.failure());
+
+        var baseline = new BaselineSimulation(List.of(road), 42, scenario,
+                BaselineSimulation.Algorithm.ASTAR, network, SimulationSettings.DEFAULT, peak);
+        var green = new BaselineSimulation(List.of(road), 42, scenario,
+                BaselineSimulation.Algorithm.GREENWAVE, network, SimulationSettings.DEFAULT, peak);
+        baseline.status(BaselineSimulation.Status.RUNNING);
+        green.status(BaselineSimulation.Status.RUNNING);
+        var motions = java.util.EnumSet.noneOf(BaselineSimulation.QueueMotion.class);
+        double previousSpeed = 0;
+        while (baseline.status() == BaselineSimulation.Status.RUNNING) {
+            baseline.advance();
+            green.advance();
+            var step = baseline.snapshot("test", 1);
+            var alternative = green.snapshot("test", 1);
+            assertEquals(step.vehicle(), alternative.vehicle());
+            assertEquals(step.metrics(), alternative.metrics());
+            assertTrue(step.vehicle().speedMps() <= 10 / 3.6 + 1e-7);
+            double delta = step.vehicle().speedMps() - previousSpeed;
+            assertTrue(delta >= -0.300001 && delta <= 0.200001);
+            previousSpeed = step.vehicle().speedMps();
+            if (step.queueMotion() != null) motions.add(step.queueMotion());
+        }
+        var stopped = baseline.snapshot("peak", 1);
+        assertEquals(BaselineSimulation.Status.COMPLETED, stopped.status(), stopped.failure());
+        assertTrue(motions.containsAll(java.util.EnumSet.allOf(BaselineSimulation.QueueMotion.class)));
+        assertTrue(stopped.metrics().stopCount() > 5);
+        assertEquals(free.metrics().distanceM(), stopped.metrics().distanceM());
+        assertTrue(stopped.metrics().fuelLiters() > free.metrics().fuelLiters() * 1.3,
+                () -> "Free flow: " + free.metrics().fuelLiters() + ", peak: " + stopped.metrics().fuelLiters());
+    }
+
     private Edge edge(String id, Node from, Node to, double length, String name) {
         return new Edge(id, from.id(), to.id(), length, 50 / 3.6, name,
                 List.of(List.of(from.lon(), from.lat()), List.of(to.lon(), to.lat())));

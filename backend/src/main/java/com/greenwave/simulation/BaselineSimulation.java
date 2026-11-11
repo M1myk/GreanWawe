@@ -25,6 +25,7 @@ final class BaselineSimulation {
                   Double remainingPhaseSeconds, SignalProgram.Type type) {}
     record Metrics(double distanceM, double elapsedSeconds, Double travelTimeSeconds,
                    int stopCount, double stoppedTimeSeconds, double speedVariationMps, Double fuelLiters) {}
+    enum QueueMotion { MOVING, ACCELERATING, BRAKING, STOPPED }
     enum JunctionType { SIGNAL, JUNCTION }
     record Upcoming(JunctionType type, String nextStreet, double distanceM, Double estimatedSeconds,
                     SignalProgram.Phase phase, Double remainingPhaseSeconds) {}
@@ -34,7 +35,7 @@ final class BaselineSimulation {
     record Snapshot(String id, Status status, double simulationTimeSeconds, double playbackRate,
                     List<List<Double>> routeGeometry, List<Double> routeCumulativeMeters, Vehicle vehicle, double effectiveMaxSpeedMps,
                     List<Signal> signals, Metrics metrics, String failure, Navigation navigation, Algorithm algorithm, GreenApproach greenApproach, boolean coasting,
-                    Double fuelFlowLitersPerHour, Integer routeCandidates) {}
+                    Double fuelFlowLitersPerHour, Integer routeCandidates, QueueMotion queueMotion) {}
     private record YellowDecision(int phaseStart, boolean mayEnter) {}
 
     private final List<Edge> initialEdges;
@@ -72,6 +73,7 @@ final class BaselineSimulation {
     private int stoppedTicks;
     private double speedVariation;
     private double fuelLiters;
+    private QueueMotion queueMotion;
     private String failure;
 
     BaselineSimulation(List<Edge> edges, List<StopLine> stopLines, long seed) {
@@ -134,6 +136,7 @@ final class BaselineSimulation {
         coastSignal = null;
         coasting = false;
         fuelFlowLitersPerHour = 0;
+        queueMotion = null;
         if (planner != null) planner.resetCandidates();
         greenPlan = null;
         recoveryThrough = -1;
@@ -161,6 +164,7 @@ final class BaselineSimulation {
         double target = roadTarget(distance, speed, edgeIndex, boostThrough, nextSignalDistance());
         if (!activeGreen) target = Math.min(target, Math.max(normal, speed - settings.braking() * STEP));
         target = Math.min(target, speedForConstraint(route.lengthM() - distance, 0, speed));
+        target = Math.min(target, trafficTarget(edgeIndex, tick, speed));
         boolean yellowCommitment = false;
 
         double blockedAt = Double.POSITIVE_INFINITY;
@@ -205,6 +209,10 @@ final class BaselineSimulation {
         }
         while (edgeIndex + 1 < edges.size() && distance >= edgeStarts[edgeIndex + 1]) edgeIndex++;
         speedVariation += Math.abs(nextSpeed - speed);
+        queueMotion = !traffic.hasQueue(edges.get(edgeIndex)) ? null
+                : nextSpeed <= 0.1 ? QueueMotion.STOPPED
+                : nextSpeed > speed + EPSILON ? QueueMotion.ACCELERATING
+                : nextSpeed < speed - EPSILON ? QueueMotion.BRAKING : QueueMotion.MOVING;
         speed = nextSpeed;
         tick++;
         if (route.lengthM() - distance <= EPSILON && speed <= EPSILON) {
@@ -222,6 +230,10 @@ final class BaselineSimulation {
             if (++stopTicks == 10) stopCount++;
         }
         if (tick >= settings.maxTicks()) status = Status.TIMEOUT;
+    }
+
+    private double trafficTarget(int edge, int atTick, double velocity) {
+        return Math.max(traffic.targetSpeed(edges.get(edge), atTick), velocity - settings.braking() * STEP);
     }
 
     private double normalCap(int edge) {
@@ -371,6 +383,7 @@ final class BaselineSimulation {
                 target = Math.min(target, Math.max(normalCap(currentEdge), velocity - settings.braking() * STEP));
             }
             target = Math.min(target, speedForConstraint(downstreamStop - position, 0, velocity));
+            target = Math.min(target, trafficTarget(currentEdge, tick + elapsed - 1, velocity));
             double next = Math.min(velocity + settings.acceleration() * STEP, target);
             position += (velocity + next) * STEP / 2;
             if (position > stopAt + EPSILON) return elapsed;
@@ -473,7 +486,8 @@ final class BaselineSimulation {
         return new Snapshot(id, status, time, rate, route.geometry(), routeCumulativeMeters, new Vehicle(position, speed), settings.maxSpeed(),
                 List.copyOf(signals), new Metrics(distance, time, status == Status.COMPLETED ? time : null,
                 stopCount, stoppedTicks * STEP, speedVariation, fuelLiters), failure, navigation(signals), algorithm, greenApproach(), status == Status.RUNNING && coasting,
-                status == Status.RUNNING ? fuelFlowLitersPerHour : 0, planner == null ? null : planner.candidatesEvaluated());
+                status == Status.RUNNING ? fuelFlowLitersPerHour : 0, planner == null ? null : planner.candidatesEvaluated(),
+                status == Status.RUNNING || status == Status.PAUSED ? queueMotion : null);
     }
 
     private boolean hasGreenPlan() {

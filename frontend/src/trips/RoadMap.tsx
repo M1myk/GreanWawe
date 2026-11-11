@@ -53,7 +53,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   const trafficMode = config.trafficMode ?? 'NONE';
   const trafficSeed = config.randomSeed;
   const trafficKey = JSON.stringify([networkId, trafficMode, trafficSeed]);
-  const [trafficLayer, setTrafficLayer] = useState<{ key: string; segments?: { edgeId: string; speedFactor: number }[] }>();
+  const [trafficLayer, setTrafficLayer] = useState<{ key: string; segments?: { edgeId: string; speedFactor: number; heavy: boolean }[] }>();
   const simulation = simulationView?.key === routeKey ? simulationView.snapshot : undefined;
   const [drivingKey, setDrivingKey] = useState<string>();
   const [drivingZoom, setDrivingZoom] = useState(5);
@@ -97,7 +97,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
     if (!fullScreen || trafficMode === 'NONE') return;
     const controller = new AbortController();
     const query = new URLSearchParams({ networkId, mode: trafficMode, seed: String(trafficSeed) });
-    void request<{ edgeId: string; speedFactor: number }[]>('/traffic?' + query, { signal: controller.signal })
+    void request<{ edgeId: string; speedFactor: number; heavy: boolean }[]>('/traffic?' + query, { signal: controller.signal })
       .then(segments => { if (!controller.signal.aborted) setTrafficLayer({ key: trafficKey, segments }); })
       .catch(() => { if (!controller.signal.aborted) setTrafficLayer({ key: trafficKey }); });
     return () => controller.abort();
@@ -122,14 +122,14 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   const drawing = useMemo(() => network ? drawNetwork(network, geographic) : undefined, [network, geographic]);
   const trafficPaths = useMemo(() => {
     if (!network || !drawing || trafficLayer?.key !== trafficKey || !trafficLayer.segments) return undefined;
-    const factors = new Map(trafficLayer.segments.map(segment => [segment.edgeId, segment.speedFactor]));
+    const factors = new Map(trafficLayer.segments.map(segment => [segment.edgeId, segment]));
     const paths = { moderate: '', heavy: '' };
     for (const edge of network.edges) {
-      const factor = factors.get(edge.id);
+      const segment = factors.get(edge.id);
       const from = drawing.points.get(edge.fromNodeId);
       const to = drawing.points.get(edge.toNodeId);
-      if (factor === undefined || !from || !to) continue;
-      const category = factor <= 0.5 ? 'heavy' : 'moderate';
+      if (!segment || !from || !to) continue;
+      const category = segment.heavy ? 'heavy' : 'moderate';
       paths[category] += `M${from.x},${from.y}L${to.x},${to.y}`;
     }
     return paths;
@@ -205,7 +205,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
     aria-label={driving ? 'Widok jazdy' : 'Wybór punktów'}
     onKeyDown={event => { if (driving && event.key === 'Escape') closeDriving(); }}>
     {driving && followed && <DrivingSummary navigation={followed.navigation} close={closeDriving}
-      algorithm={follow} onFollow={setFollow} greenApproach={followed.greenApproach} speedMps={followed.vehicle.speedMps} coasting={followed.coasting} />}
+      algorithm={follow} onFollow={setFollow} greenApproach={followed.greenApproach} speedMps={followed.vehicle.speedMps} coasting={followed.coasting} queueMotion={followed.queueMotion} />}
     <header><strong>GreenWave</strong><div className="route-header-actions">
       {resetMap && <button type="button" onClick={resetMap}>Mapa Gdańska</button>}
       <button type="button" onClick={openSaved}>Zapisane</button>
