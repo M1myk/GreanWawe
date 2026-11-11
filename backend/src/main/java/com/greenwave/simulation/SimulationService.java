@@ -1,16 +1,11 @@
 package com.greenwave.simulation;
 
-import com.greenwave.network.NetworkController.Network;
-import com.greenwave.network.NetworkController.Edge;
 import com.greenwave.network.RoadNetworkReader;
 import com.greenwave.network.RoadRoute;
 import com.greenwave.shared.api.ApiException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -48,7 +43,9 @@ public class SimulationService {
         }
         var network = networks.get(request.networkId());
         var edges = RoadRoute.findEdges(network, request.startNodeId(), request.destinationNodeId(), BaselineSimulation.MAX_SPEED);
-        var session = new Session(createEngine(network, edges, request.randomSeed()));
+        var algorithm = request.algorithm() == null ? BaselineSimulation.Algorithm.ASTAR : request.algorithm();
+        var scenario = SimulationSignals.Scenario.from(network);
+        var session = new Session(new BaselineSimulation(edges, request.randomSeed(), scenario, algorithm, network));
         synchronized (this) {
             if (sessions.size() >= 32) throw new ApiException(409, "SESSION_LIMIT", "Simulation session limit reached");
             String id = UUID.randomUUID().toString();
@@ -127,29 +124,4 @@ public class SimulationService {
         session.engine.status(next);
     }
 
-    private static BaselineSimulation createEngine(Network network, List<Edge> route, long seed) {
-        Map<String, Set<String>> neighbors = new HashMap<>();
-        for (var edge : network.edges()) {
-            neighbors.computeIfAbsent(edge.fromNodeId(), ignored -> new HashSet<>()).add(edge.toNodeId());
-            neighbors.computeIfAbsent(edge.toNodeId(), ignored -> new HashSet<>()).add(edge.fromNodeId());
-        }
-        var junctions = new HashSet<String>();
-        neighbors.forEach((node, adjacent) -> { if (adjacent.size() >= 3) junctions.add(node); });
-        boolean synthetic = network.id().equals("synthetic-v1");
-        var lines = new ArrayList<BaselineSimulation.StopLine>();
-        double distance = 0;
-        for (int i = 0; i < route.size() - 1; i++) {
-            var edge = route.get(i);
-            distance += edge.lengthM();
-            String node = edge.toNodeId();
-            int hash = node.hashCode();
-            boolean selected = synthetic ? node.equals("n2")
-                    : junctions.contains(node) && Math.floorMod(hash, 3) == 0;
-            if (!selected) continue;
-            var type = synthetic || hash % 2 == 0 ? SignalProgram.Type.FIXED : SignalProgram.Type.PEDESTRIAN;
-            lines.add(new BaselineSimulation.StopLine(node, distance, edge.geometry().getLast(),
-                    type, synthetic ? 450 : Math.floorMod(hash, 600)));
-        }
-        return new BaselineSimulation(route, lines, seed, junctions);
-    }
 }

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.stream.Collectors;
+import java.util.function.ToDoubleFunction;
 
 public record RoadRoute(List<List<Double>> geometry, double lengthM) {
     private record Visit(String id, double seconds, double estimate) {}
@@ -35,6 +36,12 @@ public record RoadRoute(List<List<Double>> geometry, double lengthM) {
 
     public static List<NetworkController.Edge> findEdges(NetworkController.Network network, String start,
                                                          String destination, double vehicleMax) {
+        return findEdges(network, start, destination, vehicleMax, edge -> 0);
+    }
+
+    public static List<NetworkController.Edge> findEdges(NetworkController.Network network, String start,
+                                                         String destination, double vehicleMax,
+                                                         ToDoubleFunction<NetworkController.Edge> addedSeconds) {
         var nodes = network.nodes().stream().collect(Collectors.toMap(NetworkController.Node::id, node -> node));
         if (!nodes.containsKey(start) || !nodes.containsKey(destination)) {
             throw new ApiException(404, "NOT_FOUND", "Route endpoint not found in the road network");
@@ -68,7 +75,9 @@ public record RoadRoute(List<List<Double>> geometry, double lengthM) {
                 return List.copyOf(reversed);
             }
             for (var edge : outgoing.getOrDefault(visit.id(), List.of())) {
-                double seconds = visit.seconds() + edge.lengthM() / Math.min(edge.speedLimitMps(), vehicleMax);
+                double penalty = addedSeconds.applyAsDouble(edge);
+                if (!Double.isFinite(penalty)) continue;
+                double seconds = visit.seconds() + freeFlowSeconds(edge, vehicleMax) + penalty;
                 if (seconds < costs.getOrDefault(edge.toNodeId(), Double.POSITIVE_INFINITY)) {
                     costs.put(edge.toNodeId(), seconds);
                     previous.put(edge.toNodeId(), edge);
@@ -78,6 +87,10 @@ public record RoadRoute(List<List<Double>> geometry, double lengthM) {
             }
         }
         throw new ApiException(422, "NO_ROUTE", "No directed road route connects these points");
+    }
+
+    public static double freeFlowSeconds(NetworkController.Edge edge, double vehicleMax) {
+        return edge.lengthM() / Math.min(edge.speedLimitMps(), vehicleMax);
     }
 
     private static double straightDistance(NetworkController.Node from, NetworkController.Node to) {

@@ -64,6 +64,7 @@ class TripPresetHttpTest {
         String path = "/simulations/" + object(created.body()).get("id");
         assertEquals("/api/v1" + path, created.headers().firstValue("Location").orElseThrow());
         assertEquals("READY", object(created.body()).get("status"));
+        assertEquals("ASTAR", object(created.body()).get("algorithm"));
         try {
             String commands = path + "/commands";
             String start = """
@@ -92,6 +93,27 @@ class TripPresetHttpTest {
             assertEquals(204, send("DELETE", path, null).statusCode());
         }
         assertEquals(404, send("GET", path, null).statusCode());
+    }
+
+    @Test void simulationAcceptsGreenWaveAndRejectsUnknownAlgorithm() throws Exception {
+        var payload = """
+                {"networkId":"synthetic-v1","startNodeId":"n1","destinationNodeId":"n3","randomSeed":42,"algorithm":"%s"}
+                """;
+        assertEquals(400, send("POST", "/simulations", payload.formatted("UNKNOWN")).statusCode());
+        var created = send("POST", "/simulations", payload.formatted("GREENWAVE"));
+        assertEquals(201, created.statusCode(), created.body());
+        var snapshot = object(created.body());
+        String path = "/simulations/" + snapshot.get("id");
+        try {
+            assertEquals("GREENWAVE", snapshot.get("algorithm"));
+            var started = send("POST", path + "/commands", """
+                    {"commandId":"start","type":"START"}
+                    """);
+            assertEquals(200, started.statusCode(), started.body());
+            assertEquals("GREENWAVE", object(started.body()).get("algorithm"));
+        } finally {
+            assertEquals(204, send("DELETE", path, null).statusCode());
+        }
     }
 
     @Test void fullCrudAndStaleVersion() throws Exception {

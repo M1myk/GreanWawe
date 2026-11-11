@@ -1352,6 +1352,21 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 2147483647
+          },
+          "algorithm": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ASTAR",
+                  "GREENWAVE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "ASTAR"
           }
         }
       },
@@ -1402,7 +1417,8 @@
           "metrics",
           "failure",
           "routeCumulativeMeters",
-          "navigation"
+          "navigation",
+          "algorithm"
         ],
         "properties": {
           "id": {
@@ -1622,6 +1638,13 @@
                 }
               }
             }
+          },
+          "algorithm": {
+            "type": "string",
+            "enum": [
+              "ASTAR",
+              "GREENWAVE"
+            ]
           }
         }
       }

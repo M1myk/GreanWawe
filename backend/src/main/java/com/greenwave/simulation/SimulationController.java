@@ -38,7 +38,7 @@ public class SimulationController {
     }
 
     record Create(@NotBlank String networkId, @NotBlank String startNodeId, @NotBlank String destinationNodeId,
-                  @NotNull @Min(0) @Max(Integer.MAX_VALUE) Long randomSeed) {}
+                  @NotNull @Min(0) @Max(Integer.MAX_VALUE) Long randomSeed, BaselineSimulation.Algorithm algorithm) {}
     enum CommandType { START, PAUSE, RESUME, RESET, SET_PLAYBACK_RATE }
     record Command(@NotBlank @Size(max = 64) String commandId, @NotNull CommandType type, Double playbackRate) {}
 }

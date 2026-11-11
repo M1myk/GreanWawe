@@ -1,6 +1,6 @@
 # SDD implementation plan
 
-Status: stages 2–5 implemented. The GreenWave comparison remains planned.
+Status: stages 2–6 implemented. The GreenWave comparison remains planned.
 
 1. Review the MVP and open decisions; agree on map scope and algorithm parameters in the specification.
 2. Create separate backend/frontend skeletons, pin compatible dependencies, configure CORS and document local setup.
@@ -22,3 +22,5 @@ Stage 3 delivered a complete working preset module and synthetic scenario, SQLit
 Stage 4 delivered the versioned Gdańsk road extract, network REST reads and map-based endpoint selection. See [road data provenance](../docs/road-network-data.md).
 
 Stage 5 delivered one A* simulation, in-memory session controls, deterministic signal programs, vehicle motion, journey metrics and the single-run map view. See the [baseline specification](features/baseline_simulation.md). No new dependency or migration was required.
+
+Stage 6 delivered the single-run GreenWave algorithm through the simulation API and shared junction and maneuver speed limits. The paired session and UI remain stage 7.

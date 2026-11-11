@@ -15,7 +15,7 @@ All signal phases, cycles and pedestrian requests are simulated by the backend. 
 
 ## Current status
 
-Stage 5 adds a single A* drive on the Gdańsk map, with simulated traffic lights, vehicle motion and journey metrics. Saved-trip CRUD and the versioned road graph use SQLite. Baseline sessions live in backend memory and disappear on restart. The GreenWave algorithm and side-by-side comparison are planned.
+Stage 5 adds a single A* drive on the Gdańsk map, with simulated traffic lights, vehicle motion and journey metrics. Saved-trip CRUD and the versioned road graph use SQLite. Baseline sessions live in backend memory and disappear on restart. Stage 6 adds GreenWave as a selectable algorithm in the simulation API. Both algorithms apply the same 30 km/h intersection limit and 20 or 15 km/h turn limits, depending on the angle. The side-by-side map comparison is planned.
 
 ## Planned MVP
 
@@ -64,7 +64,7 @@ I remain responsible for scope, design decisions, understanding the solution and
 | 3. Saved trips | End-to-end CRUD with SQLite and a simple UI | Implemented and verified |
 | 4. Road network | Small Gdańsk extract, validated graph and map display | Implemented |
 | 5. Baseline simulation | Clock, signals, vehicle physics and A* | Implemented |
-| 6. GreenWave | Limited-observation routing and speed adaptation | Planned |
+| 6. GreenWave | Limited-observation routing and speed adaptation | Implemented in the API |
 | 7. Integration and verification | Controls, animation, results and reproducibility checks | Planned |
 | 8. Submission | Verified setup guide, GIF/MP4 demo and public GitHub repository | Planned |
 
@@ -74,7 +74,7 @@ The [implementation plan](.spec/implementation_plan.md) gives more detail. The a
 
 I use **ChatGPT and Codex (OpenAI)** as engineering assistants and technical mentors. So far, AI has helped organize requirements, draft the architecture and specification, identify gaps and conflicting rules, define acceptance criteria, and prepare project documentation and `.gitignore`.
 
-In stage 2, AI also implemented the Java/React skeletons, configured CORS, prepared and ran three HTTP integration tests, built the frontend and checked browser connection, failure and recovery states. In stage 3, AI also prepared the layered preset implementation, migrations, OpenAPI contract, React CRUD UI and integration tests. Testing exposed an initial null-version getter bug; AI fixed it and reran the suite. In stage 5, AI implemented the baseline simulation, map controls and regression tests. Tests exposed an issue with the last braking increment; AI corrected the stopping calculation. The product itself does not currently include an AI feature; its distinctive functionality is the GreenWave simulation.
+In stage 2, AI also implemented the Java/React skeletons, configured CORS, prepared and ran three HTTP integration tests, built the frontend and checked browser connection, failure and recovery states. In stage 3, AI also prepared the layered preset implementation, migrations, OpenAPI contract, React CRUD UI and integration tests. Testing exposed an initial null-version getter bug; AI fixed it and reran the suite. In stage 5, AI implemented the baseline simulation, map controls and regression tests. Tests exposed an issue with the last braking increment; AI corrected the stopping calculation. In stage 6, AI implemented the signal-aware planner, the shared maneuver speed limits and the related tests. The product itself does not currently include an AI feature; its distinctive functionality is the GreenWave simulation.
 
 Agent behaviour and constraints are documented in [AGENTS.md](AGENTS.md). Actual activities, findings and verification are recorded in the [SDD report](docs/sdd_report.md). Private conversation exports and conversation links are excluded from public project materials.
 
@@ -126,6 +126,19 @@ npm run dev
 Open `http://localhost:5173` to see the full-screen Gdańsk road map. Search for an imported street in **Skąd** or **Dokąd**, or focus a field and click near a road on the map. Blue A marks the origin and red B marks the destination.
 
 Once a route is available, press **Rozpocznij teraz** to run the A* baseline and open Driving View. The camera follows the vehicle and shows the current street and the next junction or light. The estimate uses current speed. The × button restores the overview during the same run, and **Widok jazdy** reopens the camera. **Pauza** pauses the simulation, **Wznów** resumes it and **Reset** returns to the same initial state. **Tempo** changes playback speed without changing the physics. The map shows the moving car and the simulated signals along its route. The panel shows elapsed simulation time, speed, stops and time spent stopped. Changing either endpoint starts a new session when you next press **Start**. Stop each server with Ctrl+C.
+
+To try GreenWave through the local API, create a single run and use the session ID from the response to start it:
+
+```sh
+curl -sS http://localhost:8080/api/v1/simulations \
+  -H 'Content-Type: application/json' \
+  -d '{"networkId":"synthetic-v1","startNodeId":"n1","destinationNodeId":"n3","randomSeed":42,"algorithm":"GREENWAVE"}'
+
+curl -sS http://localhost:8080/api/v1/simulations/SESSION_ID/commands \
+  -H 'Content-Type: application/json' -d '{"commandId":"start","type":"START"}'
+
+curl -sS http://localhost:8080/api/v1/simulations/SESSION_ID
+```
 
 Open **Zapisane** to manage named trip presets. The saved-trip form opens the Gdańsk extract. Use **Pick start** and **Pick destination**, then click near road nodes or select their IDs from the lists. Enter a name and save. For a minimal example, switch to the synthetic scenario and choose n1 → n3 or n1 → n2. Use Edit to load and update it; Delete asks for confirmation. Node n4 is isolated and demonstrates validation. Seed and numerical parameters are saved configuration values, not a running simulation.
 

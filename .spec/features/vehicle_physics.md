@@ -1,6 +1,6 @@
 # Vehicle physics
 
-Status: feature specification v0.2, draft for review; not implemented.
+Status: shared vehicle physics is implemented for single-run simulations. The paired comparison remains planned.
 
 ## Goal
 
@@ -16,7 +16,7 @@ Definitions: [backend models](../backend/01_domain_models.md), [database](../dat
 
 INV-04, INV-05 and INV-09. Respect stop lines, speed limits and edge positions. Freeze metrics after arrival; Validate braking feasibility outside the 30 m YELLOW threshold.
 
-Also apply the [shared invariants](../shared/02_business_invariants.md).
+Apply the [junction and maneuver limits](../backend/02_simulation_rules.md#junction-and-maneuver-limits) to both algorithms. Also apply the [shared invariants](../shared/02_business_invariants.md).
 
 ## API contract
 

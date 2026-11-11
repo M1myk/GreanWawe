@@ -19,7 +19,7 @@ Unlimited history browsing and scenario deletion through the UI are outside the 
 
 ## Baseline simulation
 
-Stage 5 exposes the single-run simulation under `/simulations`. See the [baseline lifecycle and snapshot](../features/baseline_simulation.md) and the [implemented OpenAPI contract](openapi.yaml). The comparison endpoints described below are planned.
+The single-run simulation under `/simulations` accepts an optional `algorithm` field at creation. The allowed values are `ASTAR` (default) and `GREENWAVE`. The snapshot reports the selected algorithm. See the [baseline lifecycle and snapshot](../features/baseline_simulation.md) and the [implemented OpenAPI contract](openapi.yaml). The comparison endpoints described below are planned.
 
 ## Create comparison
 

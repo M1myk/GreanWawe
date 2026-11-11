@@ -44,3 +44,9 @@ Time saved = A* time minus GreenWave time; percentage uses A* time as the denomi
 Measure distance along the chosen route from the vehicle to the next applicable stop line. When a moving vehicle first encounters YELLOW for that approach, it may cross while YELLOW remains active if the distance is at most 30 m. Otherwise it must stop and wait for GREEN. Hold the decision for that YELLOW phase so braking into the 30 m zone does not change a stop decision. RED always prohibits new entry. A vehicle already beyond the line continues. A stopped vehicle waits for GREEN.
 
 When configuring the simulation, validate that approaches outside the threshold can brake in time under the configured speed and braking limits. Position clamping must not hide discontinuous physics.
+
+## Junction and maneuver limits
+
+Both algorithms use the same maneuver caps. Intermediate graph junctions with at least three distinct neighbors and simulated stop lines have a 30 km/h maximum. Any intermediate vertex with a heading change of at least 30° has a 20 km/h maximum. A change of at least 60°, including sharp bends and U-turn geometry, has a 15 km/h maximum. These are simulation defaults based on geometry. The applicable cap is the smallest of the maneuver, vehicle and road limits. Brake before the maneuver and hold the cap from 2 m before the vertex until 2 m after it, allowing one additional tick of braking margin before the zone. Stop lines and the destination retain priority.
+
+When yellow entry is considered, forecast the crossing under the active road and maneuver limits before committing. For an allowed crossing, hold the route and suspend advisory slowdown until the line is crossed. A conservative forecast also accounts for the next stop line and destination, so a nearby downstream stop cannot invalidate the commitment.

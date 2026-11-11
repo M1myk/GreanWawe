@@ -1,6 +1,6 @@
 # GreenWave navigation
 
-Status: feature specification v0.2, draft for review; not implemented.
+Status: the single-run GreenWave algorithm is implemented in stage 6. Paired runs are planned for stage 7.
 
 ## Goal
 
@@ -20,7 +20,7 @@ Also apply the [shared invariants](../shared/02_business_invariants.md).
 
 ## API contract
 
-navigation fields in POST /api/v1/comparisons; routeEdgeIds and targetSpeedMps in snapshots. Detailed heuristic remains proposed in backend navigation rules.
+The single-run implementation accepts algorithm in POST /api/v1/simulations. The comparison contract describes planned navigation fields and comparison snapshots.
 
 Fields, units, validation and errors follow the [shared REST contract](../shared/01_api_contracts.md). Do not maintain a competing contract here.
 
@@ -49,3 +49,13 @@ Fields, units, validation and errors follow the [shared REST contract](../shared
 Simple heuristic with parameters reviewed before coding. No ML or promises of improving every trip.
 
 Use these criteria for at least three meaningful automated tests for the feature. The implementation plan will identify concrete files and tools. Verify UI integration where applicable. Review proposed defaults in the [decision register](../decisions.md) before implementation.
+
+## Stage 6 implementation plan
+
+The user authorized the algorithm and shared maneuver speed limits. Update the Java simulation engine, signal observations and weighted A* search, the simulation API contract and backend tests. Use the existing session lifecycle. The optional `algorithm` field on POST /simulations accepts ASTAR (default) or GREENWAVE. The snapshot names the algorithm. Independent runs use the same physics and the same deterministic per-node signal timeline for identical seed and network. The side-by-side session and UI remain stage 7. No dependencies or database migration are needed.
+
+GreenWave observes signals within 500 m of directed road distance, including the remaining distance on its current edge. Every simulated second it evaluates the remaining route with frozen wait estimates derived from these observations. It may replace the suffix beyond the current edge when the improvement exceeds 2 s. Previously traversed nodes are excluded from alternatives. Freeze the choice during the final braking lookahead of the current edge, so a newly selected turn cannot impose an infeasible speed limit. At departure, GreenWave can also choose a different first edge. Only the fixed cycle position or the already-established pedestrian phase and countdown are exposed to the planner.
+
+For the next visible fixed signal on the chosen route, evaluate speeds in 1 m/s increments from 2 m/s and the normal vehicle maximum, using the same acceleration, braking and route limits as the engine. Choose the earliest predicted green crossing, favoring the smallest speed change on ties. The search does not infer future pedestrian requests. If no candidate helps, normal vehicle physics enforces the stop. The safety envelope can override every recommendation.
+
+Verify the shared 30/20/15 km/h limits with approach and crossing tests, a fixed-cycle speed recommendation, route switching with the current edge locked, deterministic pedestrian observations and HTTP selection of the algorithm.

@@ -47,6 +47,10 @@ final class SignalProgram {
             };
             return new State(phase, remaining, phaseStart);
         }
+        return fixedAt(tick, offset);
+    }
+
+    static State fixedAt(int tick, int offset) {
         int cycle = Math.floorMod(tick + offset, 600);
         int start = tick - cycle;
         if (cycle < 300) return new State(Phase.GREEN, 300 - cycle, start);

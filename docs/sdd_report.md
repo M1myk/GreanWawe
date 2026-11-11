@@ -123,3 +123,11 @@ Final verification: Maven verify passed all 19 backend tests, the frontend produ
 Codex added a closer follow camera, interpolated vehicle positions along confirmed route progress, and exposed the current street and upcoming junction or simulated signal in the baseline snapshot. The view can close and reopen during the same run. The arrival estimate uses current speed, and signal phase changes have a separate countdown where known.
 
 Maven verify passed 21 tests and the frontend production build passed TypeScript checking. In the browser, Łozy to Gdańska opened Driving View, the car moved while centered, deeper zoom worked, and the overview restored without pausing the run. Driving View reopened from the overview controls.
+
+## Stage 6 — GreenWave navigation and maneuver limits
+
+Codex implemented the GreenWave planner in the existing single-run API and added shared maneuver speed limits. The planner receives nearby signal observations and can update the route beyond the committed edge. The fixed signal speed forecast uses the same acceleration, braking and maneuver constraints as the active vehicle. Per-node pedestrian timelines are reproducible regardless of route or observation order.
+
+An imported Gdańsk route exposed a late yellow decision when the vehicle braked for a turn. The engine now forecasts the crossing before committing to yellow entry, using the maneuver constraints and a conservative downstream stop assumption. Once committed, it holds the route and suppresses advisory slowdown until the line is crossed.
+
+Maven verify passed 27 tests, including 18 imported origin–destination pairs driven with both algorithms, the three maneuver caps, the fixed-light speed recommendation, replanning with a preserved current edge, pedestrian timeline isolation and HTTP algorithm selection. The frontend production build and git diff --check passed.
