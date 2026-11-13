@@ -67,6 +67,8 @@ export interface ComparisonSnapshot {
   runs: [SimulationSnapshot, SimulationSnapshot];
   timeSavedSeconds: number | null;
   timeSavedPercent: number | null;
+  savedTimeExample?: string | null;
+  savedTimeExampleSource?: 'GEMINI' | 'LOCAL' | null;
   failure: { code: string; message: string } | null;
 }
 
@@ -259,6 +261,9 @@ function ComparisonResult({ snapshot }: { snapshot: ComparisonSnapshot }) {
   const [astar, greenWave] = snapshot.runs.map(run => run.metrics);
   const fuel = astar.fuelLiters == null || greenWave.fuelLiters == null
     ? null : (greenWave.fuelLiters - astar.fuelLiters) * 1000;
+  const sourceLabels = { GEMINI: 'Wygenerowane przez Gemini', LOCAL: 'Przykład z bazy' };
+  const exampleSource = snapshot.savedTimeExampleSource
+    ? sourceLabels[snapshot.savedTimeExampleSource] : 'Źródło nieznane';
   return <div className="comparison-result">
     <strong>GreenWave względem A*</strong>
     <dl>
@@ -266,6 +271,10 @@ function ComparisonResult({ snapshot }: { snapshot: ComparisonSnapshot }) {
       <div><dt>Paliwo</dt><dd>{signedDifference(fuel, 'ml')}</dd></div>
       <div><dt>Zatrzymania</dt><dd>{signedDifference(greenWave.stopCount - astar.stopCount)}</dd></div>
     </dl>
+    {snapshot.savedTimeExample && <div className="saved-time-example">
+      <small>{exampleSource}</small>
+      <p>{snapshot.savedTimeExample}</p>
+    </div>}
   </div>;
 }
 

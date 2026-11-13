@@ -29,7 +29,7 @@ Compare a baseline A* route with GreenWave navigation on a small Gdańsk road ne
 
 A prepared, versioned road network; start/destination selection; one independent vehicle per algorithm; simulated fixed-cycle and pedestrian-triggered signals; acceleration, braking and speed limits; start/pause/resume/reset and playback speed; comparison metrics; saved configurations and results; full saved-trip CRUD in UI and REST; reproducibility using seed and versions.
 
-Out of scope: real signal control, live ITS data, GPS navigation, ML, queues, interacting vehicles, accounts and a mobile app.
+Out of scope: real signal control, live ITS data, GPS navigation, ML-based routing, queues, interacting vehicles, accounts and a mobile app.
 
 ## Feature specifications
 
@@ -53,3 +53,7 @@ Update the specification first when an accepted requirement changes, followed by
 Stage 2 specification and verification criteria: [Project setup](features/project_setup.md). Health/CORS, the connection view, SQLite migrations and layered saved-trip CRUD are implemented. The Gdańsk road map, synthetic fixture and both single-run simulations and paired comparisons are available.
 
 Implemented API schemas: [OpenAPI](shared/openapi.yaml). Stage 3 follows the authorized plan in features/trip_presets.md.
+
+## Docker Compose
+
+Compose starts the backend and the built frontend together. The frontend serves the app on a configurable loopback port and proxies same-origin API requests to the backend. Root environment configuration sets the host port, SQLite data directory, optional map tile URL and Gemini settings. Only the backend receives the Gemini key at runtime. SQLite uses a persistent mounted directory. The standalone development workflow remains available.

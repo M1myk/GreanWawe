@@ -30,6 +30,10 @@ final class ComparisonSession {
     private Status status = Status.READY;
     private ComparisonSnapshot.Failure failure;
     private String finishedAt;
+    private boolean estimatedAtGreenWaveArrival;
+    private boolean requestedExample;
+    SavedTimeExamples.Draft exampleDraft;
+    SavedTimeExamples.Selection savedTimeExample;
 
     ComparisonSession(String id, Definition definition, String createdAt) {
         this.id = id;
@@ -71,6 +75,18 @@ final class ComparisonSession {
         }
     }
 
+    int takeExampleEstimate() {
+        if (requestedExample || greenWave.status() != BaselineSimulation.Status.COMPLETED
+                || baseline.status() != BaselineSimulation.Status.RUNNING) return 0;
+
+        double elapsedLead = (tick - greenWave.elapsedTicks()) * BaselineSimulation.STEP;
+        if (estimatedAtGreenWaveArrival && elapsedLead < SavedTimeExamples.MINIMUM_SECONDS) return 0;
+        estimatedAtGreenWaveArrival = true;
+        int estimate = SavedTimeExamples.wholeSeconds(elapsedLead + baseline.estimatedRemainingSeconds());
+        requestedExample = estimate >= SavedTimeExamples.MINIMUM_SECONDS;
+        return requestedExample ? estimate : 0;
+    }
+
     void fail(String code, String reason) {
         failure = new ComparisonSnapshot.Failure(code, reason);
         status = Status.FAILED;
@@ -93,6 +109,8 @@ final class ComparisonSession {
         Double percent = saving != null && astarTime > 0 ? saving * 100 / astarTime : null;
         return new ComparisonSnapshot(id, revision, status, tick * BaselineSimulation.STEP, rate,
                 definition.config(), definition.network().version(), definition.scenarioVersion(), ENGINE_VERSION,
-                createdAt, finishedAt, failure, List.of(astar, green), saving, percent);
+                createdAt, finishedAt, failure, List.of(astar, green), saving, percent,
+                savedTimeExample == null ? null : savedTimeExample.text(),
+                savedTimeExample == null ? null : savedTimeExample.source());
     }
 }

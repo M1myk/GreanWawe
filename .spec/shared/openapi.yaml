@@ -2305,6 +2305,14 @@
               "$ref": "#/components/schemas/SimulationSnapshot"
             }
           },
+          "savedTimeExampleSource": {
+            "enum": ["GEMINI", "LOCAL", null],
+            "description": "Source of the selected sentence when recorded."
+          },
+          "savedTimeExample": {
+            "type": ["string", "null"],
+            "description": "A short Polish example for a measured saving of at least 30 seconds."
+          },
           "timeSavedSeconds": {
             "type": [
               "number",

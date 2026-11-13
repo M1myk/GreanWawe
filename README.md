@@ -74,7 +74,7 @@ The [implementation plan](.spec/implementation_plan.md) gives more detail. The a
 
 I use **ChatGPT and Codex (OpenAI)** as engineering assistants and technical mentors. So far, AI has helped organize requirements, draft the architecture and specification, identify gaps and conflicting rules, define acceptance criteria, and prepare project documentation and `.gitignore`.
 
-In stage 2, AI also implemented the Java/React skeletons, configured CORS, prepared and ran three HTTP integration tests, built the frontend and checked browser connection, failure and recovery states. In stage 3, AI also prepared the layered preset implementation, migrations, OpenAPI contract, React CRUD UI and integration tests. Testing exposed an initial null-version getter bug; AI fixed it and reran the suite. In stage 5, AI implemented the baseline simulation, map controls and regression tests. Tests exposed an issue with the last braking increment; AI corrected the stopping calculation. In stage 6, AI implemented the signal-aware planner, the shared maneuver speed limits and the related tests. In stage 7, AI connected both vehicle runs to a shared clock and built the comparison controls, map view, SQLite storage and regression tests. The product itself does not currently include an AI feature; its distinctive functionality is the GreenWave simulation.
+In stage 2, AI also implemented the Java/React skeletons, configured CORS, prepared and ran three HTTP integration tests, built the frontend and checked browser connection, failure and recovery states. In stage 3, AI also prepared the layered preset implementation, migrations, OpenAPI contract, React CRUD UI and integration tests. Testing exposed an initial null-version getter bug; AI fixed it and reran the suite. In stage 5, AI implemented the baseline simulation, map controls and regression tests. Tests exposed an issue with the last braking increment; AI corrected the stopping calculation. In stage 6, AI implemented the signal-aware planner, the shared maneuver speed limits and the related tests. In stage 7, AI connected both vehicle runs to a shared clock and built the comparison controls, map view, SQLite storage and regression tests. The app optionally uses Gemini to generate a short Polish example of what the user can do with the time saved. SQLite provides local examples when a generated sentence is unavailable.
 
 Agent behaviour and constraints are documented in [AGENTS.md](AGENTS.md). Actual activities, findings and verification are recorded in the [SDD report](docs/sdd_report.md). Private conversation exports and conversation links are excluded from public project materials.
 
@@ -88,7 +88,27 @@ Agent behaviour and constraints are documented in [AGENTS.md](AGENTS.md). Actual
 
 Project documentation and code comments are written in English.
 
-## Local setup and tests
+## Run with Docker Compose
+
+Start Docker Desktop, then run these commands from the repository root on a fresh checkout.
+
+```sh
+cp -n .env.example .env
+docker compose up -d --build --wait
+```
+
+Open [GreenWave](http://localhost:3000). The frontend serves the app and forwards requests under `/api/v1/` to the backend. Both services start from the same Compose command. The backend initializes SQLite and runs Flyway migrations at startup.
+
+Edit the root `.env` to set the optional `GEMINI_API_KEY`, the Gemini model, the browser port, the map tile URL or the SQLite data directory. Keep the Gemini key in this local file. Git ignores it and Compose passes the key only to the backend at runtime. Run `docker compose up -d --build --wait` again after editing the configuration. [Docker Compose environment configuration](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
+
+Use `docker compose down` to stop both services. The database remains in `state/docker/greenwave.db` by default. To import an existing local database before the first start, take a SQLite backup while the source is available and put it in the configured data directory as `greenwave.db`.
+
+```sh
+mkdir -p state/docker
+test ! -e state/docker/greenwave.db && sqlite3 backend/greenwave.db '.backup state/docker/greenwave.db'
+```
+
+## Local development and tests
 
 ### Prerequisites
 
@@ -111,6 +131,18 @@ Stop a running JAR before rebuilding it, then restart with the new artifact. Lea
 ```
 
 This endpoint checks application availability, not database readiness.
+
+### Optional Gemini setup for standalone Java
+
+To enable Gemini on macOS, enter the following in the backend terminal after building the JAR. Paste the key when prompted and press Enter. The prompt hides the key.
+
+```zsh
+read -rs 'GEMINI_API_KEY?Gemini API key: '
+export GEMINI_API_KEY
+java -jar target/greenwave-backend-0.1.0-SNAPSHOT.jar
+```
+
+The backend defaults to `gemini-3.5-flash-lite`. To select a different compatible model, set `GEMINI_MODEL` before starting the backend. The key belongs in the backend process environment. When GreenWave saves at least 30 seconds, the result displays either a generated sentence or a duration-matched local example. [Gemini API keys](https://ai.google.dev/gemini-api/docs/api-key)
 
 ### 2. Install and start the frontend
 

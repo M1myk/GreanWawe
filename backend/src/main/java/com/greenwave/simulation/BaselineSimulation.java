@@ -586,6 +586,19 @@ final class BaselineSimulation {
                 status == Status.RUNNING || status == Status.PAUSED ? queueMotion : null);
     }
 
+    int elapsedTicks() { return tick; }
+
+    double estimatedRemainingSeconds() {
+        double remaining = 0;
+        for (int i = edgeIndex; i < edges.size(); i++) {
+            var edge = edges.get(i);
+            double meters = edgeStarts[i + 1] - Math.max(distance, edgeStarts[i]);
+            double roadSpeed = Math.min(edge.speedLimitMps(), settings.maxSpeed());
+            remaining += meters / traffic.observeSpeed(edge).expectedSpeed(roadSpeed);
+        }
+        return remaining;
+    }
+
     private List<Double> vehiclePosition() {
         var edge = edges.get(edgeIndex);
         double fraction = Math.max(0, Math.min(1, (distance - edgeStarts[edgeIndex]) / edge.lengthM()));

@@ -5,16 +5,19 @@ import java.time.Instant;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
 @Repository
 class ComparisonStore {
     private final JdbcTemplate jdbc;
     private final JsonMapper json;
+    private final SavedTimeExamples examples;
 
-    ComparisonStore(JdbcTemplate jdbc, JsonMapper json) {
+    ComparisonStore(JdbcTemplate jdbc, JsonMapper json, SavedTimeExamples examples) {
         this.jdbc = jdbc;
         this.json = json;
+        this.examples = examples;
     }
 
     @PostConstruct
@@ -27,6 +30,13 @@ class ComparisonStore {
                 INSERT INTO comparison (id, scenario_id, status, snapshot_json) VALUES (?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET status=excluded.status, snapshot_json=excluded.snapshot_json, interrupted_at=NULL
                 """, snapshot.id(), snapshot.config().scenarioId(), snapshot.status().name(), json.writeValueAsString(snapshot));
+    }
+
+    @Transactional
+    SavedTimeExamples.Selection saveCompleted(ComparisonSnapshot snapshot, SavedTimeExamples.Draft draft) {
+        var example = examples.selectAndRecord(snapshot.timeSavedSeconds(), draft);
+        save(snapshot.withSavedTimeExample(example));
+        return example;
     }
 
     Optional<ComparisonSnapshot> find(String id) {

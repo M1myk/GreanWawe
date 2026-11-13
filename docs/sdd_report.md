@@ -221,3 +221,13 @@ The revised gasoline model charges extra for low-speed acceleration. Replaying t
 The browser confirmed address selection, the rush-hour example, heading changes at 10×, a visible decision notice and equal 14 px side margins in the overview and driving mode at 390 × 844. The Maven suite, frontend build, three forecast tests, OpenAPI JSON parsing and git diff --check passed.
 
 The playback selector now opens an anchored browser popover. Browser checks verified placement 5 px above its trigger at 390 × 844 and 5 px below it on desktop, selection of 10×, and Escape dismissing the menu while Driving View remains open. The frontend production build passed.
+
+## Gemini saved-time examples
+
+Codex implemented asynchronous Gemini prefetch, a V8 SQLite migration for duration bands and duplicate history, and a short Polish sentence under the final comparison. The full Maven suite verified prefetch during the A* run with a mocked provider, immediate local fallback for a pending response, threshold and band boundaries, duplicate handling, rotation, persisted reads and reset. The frontend production build and existing forecast tests passed. A live Google request was not made because the development process had no Gemini key.
+
+## Docker Compose setup
+
+Codex added separate images for the backend and the built frontend. Compose serves the browser and proxied API on port 3000. The root environment file supplies runtime configuration and passes the Gemini key only to the backend. The existing SQLite database was copied into the Docker data directory using the SQLite backup API.
+
+Both images built and the services started through Compose. The frontend HTML, health endpoint and saved-trip API responded through the published frontend port. The two saved presets remained accessible after a backend restart. The environment check confirmed that the backend received a Gemini key and the frontend did not. This check did not call Gemini.

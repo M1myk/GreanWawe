@@ -249,3 +249,8 @@ fieldset { border: 0; margin: 0; padding: 0; }
 .playback-rate-options button:hover { background: #edf5ef; }
 .playback-rate-options button[aria-pressed="true"] { background: #176244; color: white; }
 .playback-rate-options button:focus-visible { outline-offset: -3px; }
+
+.route-panel .comparison-result .saved-time-example {
+  margin-top: 8px;
+  font-weight: 400;
+}

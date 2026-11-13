@@ -85,3 +85,13 @@ Show a mode selector and a colored traffic layer on the full-screen map. Keep th
 Selected traffic corridors use a deterministic shared cycle of crawling, braking, standing and restarting. Ordinary traffic crawls up to 20 km/h with a 2 s standstill. Peak traffic crawls up to 14 km/h with a 4 s standstill, or up to 10 km/h with a 6 s standstill on the busiest corridors. Adjacent edges with the same road name and both directions share the same clock offset. Cap and acceleration constraints still apply, and signals and turns retain priority. The planner estimates congestion cost using mean cycle speed; the overlay uses the same estimate and labels the busiest corridors separately.
 
 Integrate fuel using the existing vehicle model, including idle and each acceleration. Surface the actual current queue motion in the comparison. Verify repeated stops, restart, fuel increase on a comparable route, fairness, and deterministic replay. No migration or dependency is needed.
+
+## Saved-time example
+
+When GreenWave arrives first, estimate the final saving as its elapsed lead plus the remaining A* travel time using road speeds and mean queue speeds. Start one asynchronous Gemini request if the initial estimate reaches 30 seconds. If the initial estimate is lower, request once the elapsed lead reaches 30 seconds while A* is still running. This estimate is used only for the example.
+
+When both vehicles arrive and the measured saving is at least 30 seconds, display one short Polish sentence under the result. Duration bands are [30, 60), [60, 120), [120, 240), [240, 420), [420, 600) and [600, infinity) seconds. The prompt uses the estimate and asks for an activity that fits the lower bound of the band. Use the generated sentence when it is ready, valid, belongs to the measured band and introduces a topic and text outside the last 20 results. Otherwise select a SQLite example for the measured band, preferring the least recently used activity. The final snapshot and the displayed example's history are saved together. A reset replaces the snapshot and starts a separate generation attempt. Historical snapshots may omit the sentence. A timeout or a measured gain below 30 seconds leaves the sentence absent.
+
+Use the JDK HTTP client, a server-side Gemini key and structured JSON. Keep simulation updates independent of the external request. Only estimated seconds, the duration band and recent activity topics are sent. Verify prefetch, threshold boundaries, fallback, history and reset behavior.
+
+Display the source beside each saved-time sentence. New results record whether Gemini supplied the selected sentence or SQLite supplied a local example. Older results with a sentence and no recorded source display an unknown source label.
