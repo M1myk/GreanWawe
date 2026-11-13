@@ -40,8 +40,30 @@ The full-screen map accepts free pin placement inside the marked coverage circle
 
 ## Driving view
 
-Starting a baseline run opens Driving View. The north-up camera follows the vehicle at street scale. The panel shows the current street, the next junction or simulated light on the route, its distance and an estimated time at current speed. A stopped vehicle has no time estimate. A signal displays its current phase and the phase countdown when available. The close button restores the previous overview camera without changing the run. The user can reopen Driving View from the simulation controls. Wheel, pinch and buttons allow deeper zoom, with the vehicle as the zoom anchor while following.
+Starting a baseline run opens Driving View. The camera follows the vehicle at street scale. The panel shows the current street, the next junction or simulated light on the route, its distance and an estimated time at current speed. A stopped vehicle has no time estimate. A signal displays its current phase and the phase countdown when available. The close button restores the previous overview camera without changing the run. The user can reopen Driving View from the simulation controls. Wheel, pinch and buttons allow deeper zoom, with the vehicle as the zoom anchor while following.
 
 The frontend interpolates along the route between confirmed progress samples and snaps to the latest confirmed state on pause, reset, or arrival. Reduced motion shows confirmed positions directly.
 
 During a GreenWave comparison, draw the alternatives from the latest route evaluation as violet dashed overlays beneath the selected routes. Provide a collapsible list of their remaining travel time, signal waiting and congestion delay. Selecting a variant highlights its path for inspection and leaves the simulation's routing decision to the backend.
+
+### Navigation layout during a comparison
+
+Starting the comparison opens a full-screen driving layout on the existing basemap. A green banner at the top shows the followed vehicle's current street and the next junction or signal, with its street, distance, time estimate and signal phase when available. The camera follows the vehicle below screen center and the vehicle marker indicates its route heading. Route strokes use a light outline and distinct weights and patterns so the routes remain distinguishable when they overlap. A compact dark panel at the bottom keeps the vehicle selector, exit button, alternatives and simulation controls available. The full comparison metrics can be expanded during driving.
+
+Show the estimated time gain or loss for each GreenWave alternative relative to the selected GreenWave route from the same evaluation. Use the rounded difference of the remaining travel time estimates, with a similar-time label at zero. The bottom panel summarizes the highlighted alternative, or the alternative with the lowest estimated remaining time when none is highlighted. Do not report a forecast without a selected route and an alternative. The measured comparison result remains separate and continues to require both runs to arrive. Highlighting and closing the driving view preserve the active simulation.
+
+Verify the live banner, route contrast, overview restoration and panel controls at mobile and desktop sizes. Test positive, negative, zero and unavailable forecast differences. No backend contract, dependency or migration is required.
+
+### Heading and decision explanations
+
+In Driving View, keep the followed vehicle heading up by rotating the map around the vehicle. Keep interface controls upright and restore the north-up overview on exit. Alternatives distinguish estimated time from routing score and switching threshold. Show recent removal explanations reported by the backend even when no alternatives remain.
+
+The example button loads the versioned Gdańsk demonstration configuration and lets the user start it with the usual controls. After both vehicles arrive, show the signed GreenWave differences for time, estimated fuel and stops above the detailed results. Verify the heading and compare projected and realized times on short signal, congested and long runs.
+
+The driving banner shows the followed vehicle's current road speed limit in km/h in a sign separate from its actual speed. Hide the sign for older snapshots with no limit.
+
+The driving camera eases toward route heading on the shortest angular arc using real frame time. Reduced-motion preferences apply. Recent route decisions remain readable for at least eight wall-clock seconds after first reception, independently of playback rate, and are cleared on reset or trip replacement. Center the overview panel, driving dock and banner with equal mobile gutters.
+
+The Gdańsk picker offers a short Kołobrzeska–Pomorska example and a separate rush-hour Strzyża–Drzewieckiego example based on the reproduced comparison. It searches a bundled, partial OpenStreetMap address index by street and house number. An address places the map pin and uses the existing reachable road access selection. Coverage depends on imported addresses.
+
+Anchor the playback rate menu to its trigger in the overview and Driving View. Open below the trigger when space permits and above it near the bottom edge. Keep the options within the viewport and above the scrollable panel. Support keyboard focus, Escape and outside dismissal.

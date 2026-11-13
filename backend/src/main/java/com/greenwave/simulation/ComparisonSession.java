@@ -10,7 +10,7 @@ import java.util.Map;
 import static com.greenwave.simulation.ComparisonSnapshot.Status;
 
 final class ComparisonSession {
-    static final String ENGINE_VERSION = "0.7.7";
+    static final String ENGINE_VERSION = "0.7.10";
     record Definition(TripConfigRequest config, Network network, String scenarioVersion,
                       SimulationSettings settings, SimulationSignals.Scenario signals, List<Edge> edges, SimulationTraffic traffic) {}
     record Applied(ComparisonController.Command command, ComparisonSnapshot snapshot) {}

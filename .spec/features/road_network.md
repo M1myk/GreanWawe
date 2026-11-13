@@ -46,7 +46,7 @@ Fields, units, validation and errors follow the [shared REST contract](../shared
 
 ## Scope and verification
 
-Prepared-data import, read API and map display. No road editor, geocoding or runtime whole-city download.
+Prepared-data import, read API and map display. The Gdańsk frontend searches a bundled partial address index. Road editing and runtime whole-city downloads are outside scope.
 
 Use these criteria for at least three meaningful automated tests for the feature. The implementation plan will identify concrete files and tools. Verify UI integration where applicable. Review proposed defaults in the [decision register](../decisions.md) before implementation.
 

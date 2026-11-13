@@ -12,7 +12,7 @@
 
 ## Functional proposals v0.2
 
-SQLite; Java 21/Spring Boot; React/TypeScript/Vite/Tailwind/Leaflet; saved-trip CRUD; a 0.1 s tick; 250 ms polling; 500 m observation range; decisions every 1 s; a 1800 s duration limit. Proposed vehicle defaults: 13.89 m/s maximum speed, 2 m/s² acceleration, 3 m/s² braking. Simplified signals, one vehicle per algorithm and the heuristic in backend/03_navigation.md.
+SQLite; Java 21/Spring Boot; React/TypeScript/Vite/Tailwind/Leaflet; saved-trip CRUD; a 0.1 s tick; 250 ms polling; 500 m observation range; decisions every 1 s; a 3000 s default duration limit. Proposed vehicle defaults: 13.89 m/s maximum speed, 2 m/s² acceleration, 3 m/s² braking. Simplified signals, one vehicle per algorithm and the heuristic in backend/03_navigation.md.
 
 These details are drafts, not previously approved user decisions. Approval of the process does not automatically approve numerical defaults or implementation.
 

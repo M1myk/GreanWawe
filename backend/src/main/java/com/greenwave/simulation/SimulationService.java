@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class SimulationService {
-    private static final Set<Double> RATES = Set.of(0.5, 1.0, 2.0, 5.0);
+    private static final Set<Double> RATES = Set.of(0.5, 1.0, 2.0, 5.0, 10.0);
     private static final long SESSION_IDLE_NANOS = Duration.ofMinutes(30).toNanos();
     private static final int COMMAND_HISTORY_LIMIT = 128;
     private final RoadNetworkReader networks;
@@ -83,7 +83,7 @@ public class SimulationService {
             }
             case SET_PLAYBACK_RATE -> {
                 if (request.playbackRate() == null || !RATES.contains(request.playbackRate())) {
-                    throw new ApiException(422, "INVALID_PLAYBACK_RATE", "Playback rate must be 0.5, 1, 2 or 5");
+                    throw new ApiException(422, "INVALID_PLAYBACK_RATE", "Playback rate must be 0.5, 1, 2, 5 or 10");
                 }
                 session.rate = request.playbackRate();
             }

@@ -31,7 +31,7 @@ The single-run simulation under `/simulations` accepts an optional `algorithm` f
   "randomSeed": 42,
   "vehicle": {"maxSpeedMps": 13.89, "accelerationMps2": 2, "brakingMps2": 3},
   "navigation": {"observationRangeM": 500, "decisionIntervalSeconds": 1},
-  "maxDurationSeconds": 1800
+  "maxDurationSeconds": 3000
 }
 ```
 
@@ -45,7 +45,7 @@ The response contains id, revision, status, simulationTimeSeconds, playbackRate,
 
 ## Commands
 
-Body: `{commandId,expectedRevision,type,playbackRate?}`. Types: START, PAUSE, RESUME, RESET, SET_PLAYBACK_RATE. playbackRate is required only for SET_PLAYBACK_RATE and must be one of 0.5, 1, 2, 5. Reusing commandId with identical body returns the cached response without execution; a different body returns 409. Idempotency covers the last 128 successful commands of a live session.
+Body: `{commandId,expectedRevision,type,playbackRate?}`. Types: START, PAUSE, RESUME, RESET, SET_PLAYBACK_RATE. playbackRate is required only for SET_PLAYBACK_RATE and must be one of 0.5, 1, 2, 5, 10. Reusing commandId with identical body returns the cached response without execution; a different body returns 409. Idempotency covers the last 128 successful commands of a live session.
 
 Revision increases after every tick and command. expectedRevision guards against intervening control commands, not ordinary ticks: reject if another command occurred after that revision. Ticks alone do not create conflicts. Snapshots carry a monotonic revision within the live session. Recovery of an interrupted comparison uses the persisted READY revision and returns the terminal BACKEND_RESTARTED failure. Reject revisions newer than the current state as conflicts.
 
@@ -86,3 +86,7 @@ The machine-readable contract for implemented endpoints is [openapi.yaml](openap
 GET /networks lists immutable network versions with actual bounds. GET /networks/{id} returns nodes and directed edges, including optional road names represented by empty strings when unavailable and geometry as two [longitude, latitude] coordinates. An unknown ID returns 404. The synthetic fixture is retained. The implemented schemas are in [OpenAPI](openapi.yaml).
 
 GreenWave run snapshots expose optional `routeOptions` with up to ten entries from the last evaluation, selected first. Each has a stable path identifier for the same sequence of edges, `selected`, `geometry` ([longitude, latitude] pairs), `remainingSeconds`, `signalWaitSeconds` and `congestionDelaySeconds`. Estimates are relative to the evaluation instant and may remain unchanged during a committed maneuver. `routeOptions` is empty before an evaluation or when no uncommitted route remains. A* returns an empty list.
+
+GreenWave route options may include `scoreGainSeconds` and `requiredGainSeconds`, measured in routing score seconds relative to the incumbent at the decision. They are null for the selected option or when the incumbent changed in that decision. An optional `routeNotices` array carries recent removals of previously faster options. Each entry contains the path `id`, its previous displayed `gainSeconds`, optional `atSeconds` identifying the simulation instant and a `reason` of SELECTED, COMMITTED, ESTIMATE_CHANGED or CANDIDATE_REMOVED.
+
+Navigation snapshots include `roadSpeedLimitMps` for the vehicle's current directed road segment. It reports the road network limit before applying vehicle, traffic, maneuver or simulation speed adjustments. Earlier stored snapshots may omit this field.

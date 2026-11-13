@@ -50,3 +50,7 @@ Rank candidates by projected remaining travel time plus half the expected queue 
 Look for a queue-aware winner and keep up to ten distinct legal candidates, including the incumbent and best bounded structural alternatives. Publish the actual evaluated paths, selected path, remaining time estimate, signal waiting and queue delay as part of the run snapshot. Geometry starts at the position used for the latest evaluation. React displays all alternate paths over the traffic layer with a selectable highlight and estimated metrics. The selected route keeps its existing styling. A* and the simulation's movement limits retain their existing behavior.
 
 Verify that an open main road beats a marginal side-road detour, a meaningful bypass can win against a congested incumbent, and the published paths match the distinct options compared under the same observations. A limited search and partial observations can leave some legal paths unexplored.
+
+## Decision explanations
+
+Publish the routing score gain and required switching gain for each evaluated alternative, using the same eligibility rules as selection. Publish recent removals of previously faster alternatives for ten simulation seconds. Identify a selected alternative, a divergence inside the committed prefix, or a slower recalculated ETA when the old path still shares the prefix. Use a neutral explanation for other removals from the bounded search. These diagnostics do not affect route selection.

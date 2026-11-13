@@ -5,12 +5,22 @@ import { algorithmNames, ComparisonControls } from './ComparisonControls';
 import type { Algorithm, ComparisonSnapshot } from './ComparisonControls';
 import { defaultConfig, trafficLabels, trafficModes, type TrafficMode, type TripConfig } from './types';
 import { DrivingSummary } from './DrivingSummary';
+import { useDrivingHeading } from './useDrivingHeading';
+import { useRouteNotices } from './useRouteNotices';
 import { useVehiclePosition } from './useVehiclePosition';
+import { alternativeForecast, timeDifference, timeDifferenceLabel } from './routeForecast';
 
 const runColors: Record<Algorithm, string> = { ASTAR: '#1458bf', GREENWAVE: '#087a48' };
 
 const alternativeColor = '#7136ad';
 const forecastSeconds = (seconds: number) => Math.round(seconds).toLocaleString('pl-PL') + ' s';
+
+const noticeLabels = {
+  SELECTED: 'GreenWave wybrał ten wariant.',
+  COMMITTED: 'Za późno na zmianę manewru.',
+  ESTIMATE_CHANGED: 'Po przeliczeniu wariant stracił przewagę.',
+  CANDIDATE_REMOVED: 'Wariant wypadł z listy ocenianych tras.',
+};
 
 const MIN_ZOOM = -2;
 const MAX_ZOOM = 7;
@@ -19,6 +29,7 @@ const clampZoom = (zoom: number) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom))
 interface Node { id: string; lat: number; lon: number }
 interface Network { nodes: Node[]; edges: { id: string; fromNodeId: string; toNodeId: string; name: string; lengthM: number }[] }
 type Endpoint = 'startNodeId' | 'destinationNodeId';
+type Address = [label: string, lat: number, lon: number];
 interface Point { x: number; y: number }
 interface PinDrag {
   field: Endpoint;
@@ -34,17 +45,18 @@ interface Props {
   onTrafficMode?: (mode: TrafficMode) => void;
   resetMap?: () => void;
   openSaved?: () => void;
+  loadExample?: (rushHour: boolean) => void;
   start: string;
   destination: string;
   onSelect: (field: Endpoint, id: string) => void;
 }
 
-export function RoadMap({ networkId, start, destination, onSelect, fullScreen, openSaved, comparisonConfig, resetMap, onTrafficMode }: Props) {
+export function RoadMap({ networkId, start, destination, onSelect, fullScreen, openSaved, comparisonConfig, resetMap, onTrafficMode, loadExample }: Props) {
   const [network, setNetwork] = useState<Network>();
   const [error, setError] = useState(false);
   const [field, setField] = useState<Endpoint>('startNodeId');
 
-  const [locations, setLocations] = useState<Partial<Record<Endpoint, { id: string; point: Point }>>>({});
+  const [locations, setLocations] = useState<Partial<Record<Endpoint, { id: string; point: Point; label?: string }>>>({});
   const [drag, setDrag] = useState<PinDrag>();
   const [hint, setHint] = useState('');
   const [preview, setPreview] = useState<{ key: string; geometry?: [number, number][]; lengthM?: number }>();
@@ -60,7 +72,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   const simulation = simulationView?.key === routeKey ? simulationView.snapshot : undefined;
   const [drivingKey, setDrivingKey] = useState<string>();
   const [drivingZoom, setDrivingZoom] = useState(5);
-  const driving = drivingKey === routeKey && Boolean(simulation);
+  const driving = drivingKey === routeKey && Boolean(simulation && simulation.status !== 'READY');
   const [follow, setFollow] = useState<Algorithm>('ASTAR');
   const [highlightedOption, setHighlightedOption] = useState<string>();
   const astar = simulation?.runs[0];
@@ -68,8 +80,22 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   const astarPosition = useVehiclePosition(astar);
   const greenWavePosition = useVehiclePosition(greenWave);
   const followed = follow === 'ASTAR' ? astar : greenWave;
-  const runPoints = { ASTAR: projectPosition(astarPosition), GREENWAVE: projectPosition(greenWavePosition) };
+  const runPoints = { ASTAR: projectPosition(astarPosition?.position), GREENWAVE: projectPosition(greenWavePosition?.position) };
   const vehiclePoint = runPoints[follow];
+  const segment = (follow === 'ASTAR' ? astarPosition : greenWavePosition)?.segment;
+  const from = projectPosition(segment?.from);
+  const to = projectPosition(segment?.to);
+  const heading = useDrivingHeading(from && to ? Math.atan2(to.x - from.x, from.y - to.y) : 0, driving);
+  const notices = useRouteNotices(greenWave);
+  const [addresses, setAddresses] = useState<Address[]>();
+  useEffect(() => {
+    if (!fullScreen || networkId !== 'gdansk-v3') return;
+    const controller = new AbortController();
+    fetch(import.meta.env.BASE_URL + 'gdansk-addresses.json', { signal: controller.signal })
+      .then(response => response.ok ? response.json() : undefined)
+      .then(setAddresses).catch(() => {});
+    return () => controller.abort();
+  }, [networkId, fullScreen]);
   const signals = [...new Map(simulation?.runs.flatMap(run => run.signals.map(signal => [signal.id, signal] as const))).values()];
 
   function openDriving() {
@@ -85,6 +111,8 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   ], [astar?.routeGeometry, greenWave?.routeGeometry, route?.geometry]);
 
   const options = greenWave?.routeOptions;
+  const { selected: selectedOption, alternative } = alternativeForecast(options, highlightedOption);
+  const alternativeDifference = alternative && timeDifference(selectedOption, alternative);
   const alternativeLines = useMemo(() => options?.filter(option => !option.selected).map(option => ({
     id: option.id, points: routePoints(option.geometry),
   })) ?? [], [options]);
@@ -181,12 +209,12 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
     return () => observer.disconnect();
   }, [drawing, geographic]);
   const streetNames = drawing?.streetNames;
-  function updateEndpoint(endpoint: Endpoint, id: string, point?: Point) {
-    setLocations(current => ({ ...current, [endpoint]: point ? { id, point } : undefined }));
+  function updateEndpoint(endpoint: Endpoint, id: string, point?: Point, label?: string) {
+    setLocations(current => ({ ...current, [endpoint]: point ? { id, point, label } : undefined }));
     onSelect(endpoint, id);
   }
 
-  function placePin(endpoint: Endpoint, point: Point) {
+  function placePin(endpoint: Endpoint, point: Point, label?: string) {
     if (!drawing || !network) return false;
     const { bounds, points } = drawing;
     const centerX = bounds.x + bounds.width / 2;
@@ -202,7 +230,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
       return false;
     }
     const access = points.get(id);
-    updateEndpoint(endpoint, id, access && Math.hypot(access.x - point.x, access.y - point.y) < 0.01 ? undefined : point);
+    updateEndpoint(endpoint, id, access && Math.hypot(access.x - point.x, access.y - point.y) < 0.01 ? undefined : point, label);
     return true;
   }
   function changeZoom(delta: number) {
@@ -213,16 +241,52 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   const panel = fullScreen && <section className={driving ? 'route-panel route-panel--driving' : 'route-panel'}
     aria-label={driving ? 'Widok jazdy' : 'Wybór punktów'}
     onKeyDown={event => { if (driving && event.key === 'Escape') closeDriving(); }}>
-    {driving && followed && <DrivingSummary navigation={followed.navigation} close={closeDriving}
-      algorithm={follow} onFollow={setFollow} greenApproach={followed.greenApproach} speedMps={followed.vehicle.speedMps} coasting={followed.coasting} queueMotion={followed.queueMotion} />}
+    {driving && followed && <div className="driving-dock">
+      <div className="driving-dock-heading">
+        <div>
+          {alternativeDifference !== undefined && <span className="driving-caption">
+            {alternative?.id === highlightedOption ? 'Prognoza wybranej alternatywy' : 'Prognoza najszybszej alternatywy'}
+          </span>}
+          <strong className={alternativeDifference != null && alternativeDifference > 0 ? 'forecast-gain' : undefined}>
+            {alternativeDifference === undefined
+              ? `${Math.round(followed.vehicle.speedMps * 3.6)} km/h`
+              : timeDifferenceLabel(alternativeDifference)}
+          </strong>
+        </div>
+        <button type="button" className="driving-exit" autoFocus onClick={closeDriving}
+          aria-label="Zamknij widok jazdy">×</button>
+      </div>
+      <div className="follow-options" role="group" aria-label="Śledzony pojazd">
+        {(['ASTAR', 'GREENWAVE'] as const).map(value => <button key={value} type="button"
+          aria-pressed={follow === value} onClick={() => setFollow(value)}>{algorithmNames[value]}</button>)}
+        {alternativeDifference !== undefined && <span>{Math.round(followed.vehicle.speedMps * 3.6)} km/h</span>}
+      </div>
+    </div>}
     <header><strong>GreenWave</strong><div className="route-header-actions">
       {resetMap && <button type="button" onClick={resetMap}>Mapa Gdańska</button>}
       <button type="button" onClick={openSaved}>Zapisane</button>
     </div></header>
+    {loadExample && <div className="example-routes">
+      {[false, true].map(rushHour => <button key={String(rushHour)} type="button" className="secondary" onClick={() => {
+        setLocations({});
+        activate('startNodeId');
+        closeDriving();
+        loadExample(rushHour);
+      }}>{rushHour ? 'Strzyża → Drzewieckiego · szczyt' : 'Wypróbuj przykład · Kołobrzeska → Pomorska'}</button>)}
+    </div>}
     {(['startNodeId', 'destinationNodeId'] as const).map((key, index) => {
       const selected = index ? destination : start;
       return <EndpointField key={key + ':' + selected} label={index ? 'Dokąd' : 'Skąd'}
         marker={index ? 'B' : 'A'} selected={selected} names={streetNames}
+        addresses={networkId === 'gdansk-v3' ? addresses : undefined}
+        addressLabel={locations[key]?.id === selected ? locations[key]?.label : undefined}
+        chooseAddress={([label, lat, lon]) => {
+          if (placePin(key, project({ id: '', lat, lon }), label)) {
+            activate(key === 'startNodeId' ? 'destinationNodeId' : key);
+            return true;
+          }
+          return false;
+        }}
         accessLabel={locations[key]?.id === selected && selected
           ? streetNames?.get(selected) || 'punkt na drodze' : undefined}
         active={field === key} activate={() => activate(key)}
@@ -254,18 +318,30 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
       {simulation ? 'Trasy porównania' : !route ? 'Wyznaczanie trasy…' : route.lengthM === undefined ? 'Nie udało się wyznaczyć dojazdu.'
         : `Trasa samochodowa · ${(route.lengthM / 1000).toLocaleString('pl', { maximumFractionDigits: 2 })} km`}
     </p>}
+    {notices.length > 0 && <ul className="route-notices" aria-label="Ostatnie decyzje GreenWave">
+      {notices.map(notice => <li key={notice.key}>
+        Wariant wcześniej {forecastSeconds(notice.gainSeconds)} szybszy · {noticeLabels[notice.reason]}
+      </li>)}
+    </ul>}
     {options && options.length > 0 && <details className="route-options">
       <summary>Warianty GreenWave · {options.length}</summary>
-      <p>Ostatnia ocena od miejsca przeliczenia trasy</p>
+      <p>Różnice względem wybranej trasy GreenWave z ostatniego przeliczenia.</p>
       <ol>
         {options.map((option, index) => {
           const label = option.selected ? 'Wybrana trasa' : `Alternatywa ${index}`;
+          const difference = timeDifference(selectedOption, option);
           return <li key={option.id}>
             {option.selected ? <strong>{label}</strong> :
               <button type="button" aria-pressed={highlightedOption === option.id}
                 onClick={() => setHighlightedOption(current => current === option.id ? undefined : option.id)}>
                 {label}
               </button>}
+            {difference !== undefined && <strong className={difference > 0 ? 'forecast-gain' : undefined}>
+              {timeDifferenceLabel(difference)}
+            </strong>}
+            {difference != null && difference > 0 && option.scoreGainSeconds != null && option.requiredGainSeconds != null &&
+              <span>{option.scoreGainSeconds <= 0 ? 'GreenWave ocenił obecną trasę wyżej po uwzględnieniu korków.'
+                : `Zysk w ocenie ${forecastSeconds(option.scoreGainSeconds)} · do zmiany potrzeba ${forecastSeconds(option.requiredGainSeconds)}`}</span>}
             <span>Do celu {forecastSeconds(option.remainingSeconds)} · Światła {forecastSeconds(option.signalWaitSeconds)}
               {' · Korki +'}{forecastSeconds(option.congestionDelaySeconds)}</span>
           </li>;
@@ -283,14 +359,16 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   const center = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
   const width = size.width / scale;
   const height = size.height / scale;
-  const focus = driving && vehiclePoint ? vehiclePoint : {
+  const focus = driving && vehiclePoint ? { x: vehiclePoint.x, y: vehiclePoint.y - height * 0.09 } : {
     x: center.x + radius * 0.12 + camera.x,
     y: center.y - radius * 0.15 + camera.y,
   };
   const view = { x: focus.x - width / 2, y: focus.y - height / 2, width, height };
-  const tiles = geographic && networkId !== 'synthetic-v1' ? visibleTiles(view, scale) : [];
+  const tileView = driving && vehiclePoint ? rotatedTileBounds(view, vehiclePoint, heading) : view;
+  const tiles = geographic && networkId !== 'synthetic-v1' ? visibleTiles(tileView, scale) : [];
+  const degrees = heading * 180 / Math.PI;
   const pinScale = geographic ? 1 / scale : 1;
-  return <div className={fullScreen ? "map-surface" : undefined}>
+  return <div className={fullScreen ? `map-surface${driving ? ' map-surface--driving' : ''}` : undefined}>
     {!fullScreen && <div className="actions">
       <button type="button" aria-pressed={field === 'startNodeId'} onClick={() => setField('startNodeId')}>Pick start</button>
       <button type="button" aria-pressed={field === 'destinationNodeId'} onClick={() => setField('destinationNodeId')}>Pick destination</button>
@@ -346,6 +424,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
           setHint(field === 'startNodeId' ? 'A · Kliknij bliżej drogi.' : 'B · Kliknij bliżej drogi.');
         }
       }}>
+      <g transform={driving && vehiclePoint ? `rotate(${-degrees} ${vehiclePoint.x} ${vehiclePoint.y})` : undefined}>
       <path d={paths} stroke="#bbc8bd" fill="none" strokeWidth="2.8" />
       <path d={paths} stroke="#fff" fill="none" strokeWidth="1.6" />
       {[...majorRoads.values()].map(edge => {
@@ -357,7 +436,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
       })}
       {tiles.map(tile => <image key={tile.url} href={tile.url} x={tile.x} y={tile.y}
         width={tile.size} height={tile.size} pointerEvents="none" />)}
-      {geographic && <g pointerEvents="none">
+      {geographic && !driving && <g pointerEvents="none">
         <circle cx={center.x} cy={center.y} r={radius} fill="#1670df" fillOpacity=".06"
           stroke="#1462bc" strokeWidth="2" strokeDasharray="7 5" vectorEffect="non-scaling-stroke" />
         <rect x={bounds.x} y={bounds.y} width={bounds.width} height={bounds.height}
@@ -368,14 +447,12 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
           <path d={trafficPaths.moderate} stroke="#ed8a21" opacity=".65" vectorEffect="non-scaling-stroke" />
           <path d={trafficPaths.heavy} stroke="#d73637" opacity=".75" vectorEffect="non-scaling-stroke" />
         </g>}
-      {geographic && alternativeLines.map(line => <polyline key={line.id} points={line.points}
-        fill="none" stroke={alternativeColor} strokeWidth={line.id === highlightedOption ? 7 : 3}
-        opacity={line.id === highlightedOption ? 1 : 0.65} strokeDasharray="4 6" strokeLinecap="round"
-        strokeLinejoin="round" vectorEffect="non-scaling-stroke" pointerEvents="none" />)}
-      {geographic && routeLines.map(({ algorithm, points: line }) => line && <polyline key={algorithm}
-        points={line} fill="none" stroke={runColors[algorithm]} strokeWidth={algorithm === 'ASTAR' ? 7 : 4}
-        strokeDasharray={algorithm === 'GREENWAVE' ? '10 7' : undefined} strokeLinecap="round"
-        strokeLinejoin="round" vectorEffect="non-scaling-stroke" pointerEvents="none" />)}
+      {geographic && alternativeLines.map(line => <RouteStroke key={line.id} points={line.points}
+        color={alternativeColor} width={line.id === highlightedOption ? 8 : 5}
+        opacity={line.id === highlightedOption ? 1 : 0.8} dash="7 7" />)}
+      {geographic && routeLines.map(({ algorithm, points: line }) => <RouteStroke key={algorithm}
+        points={line} color={runColors[algorithm]} width={algorithm === 'ASTAR' ? (driving ? 12 : 9) : (driving ? 7 : 5)}
+        dash={algorithm === 'GREENWAVE' ? '13 9' : undefined} />)}
       {geographic && signals.map(signal => {
         const [lon, lat] = signal.position;
         const point = project({ id: signal.id, lat, lon });
@@ -451,6 +528,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
           <text y="-16" textAnchor="middle" fill="white" fontSize="12" fontWeight="700">{index ? 'B' : 'A'}</text>
         </g></g>;
       })}
+      </g>
       {geographic && simulation?.runs.map(run => {
         const point = runPoints[run.algorithm];
         if (!point) return null;
@@ -458,27 +536,63 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
           Math.hypot(runPoints.ASTAR.x - runPoints.GREENWAVE.x, runPoints.ASTAR.y - runPoints.GREENWAVE.y) * scale < 30;
         const anchor = driving ? follow : 'ASTAR';
         const offset = overlap && run.algorithm !== anchor ? 31 : 0;
-        const markerScale = pinScale * (driving && run.algorithm === follow ? 1.35 : 1);
-        return <g key={run.algorithm} transform={`translate(${point.x} ${point.y}) scale(${markerScale})`}
+        const isFollowed = driving && run.algorithm === follow;
+        const markerScale = pinScale * (isFollowed ? 1.35 : 1);
+        const screenPoint = driving && vehiclePoint ? rotateAround(point, vehiclePoint, -heading) : point;
+        return <g key={run.algorithm} transform={`translate(${screenPoint.x} ${screenPoint.y}) scale(${markerScale})`}
           pointerEvents="none" aria-label={`Pojazd ${algorithmNames[run.algorithm]}`}>
           {offset > 0 && <path d={`M0 0H${offset}`} stroke={runColors[run.algorithm]} strokeWidth="2" />}
           <g transform={`translate(${offset} 0)`}>
-            <circle r="12" fill={runColors[run.algorithm]} stroke="white" strokeWidth="2" />
-            <text textAnchor="middle" dominantBaseline="central" fill="white" fontSize="10" fontWeight="700">
-              {run.algorithm === 'ASTAR' ? 'A*' : 'GW'}
-            </text>
+            {isFollowed ? <>
+              <circle r="15" fill={runColors[run.algorithm]} stroke="white" strokeWidth="2" />
+              <path d="M0 -10 7 7 0 4 -7 7Z" fill="white" />
+            </> : <>
+              <circle r="12" fill={runColors[run.algorithm]} stroke="white" strokeWidth="2" />
+              <text textAnchor="middle" dominantBaseline="central" fill="white" fontSize="10" fontWeight="700">
+                {run.algorithm === 'ASTAR' ? 'A*' : 'GW'}
+              </text>
+            </>}
           </g>
         </g>;
       })}
     </svg>
+    {driving && followed && <DrivingSummary run={followed} />}
     {panel}
     {geographic && <div className="map-controls" aria-label="Sterowanie mapą">
-      <span>Obszar działania GreenWave</span>
+      {!driving && <span>Obszar działania GreenWave</span>}
       <button type="button" aria-label="Powiększ mapę" disabled={zoom >= MAX_ZOOM} onClick={() => changeZoom(1)}>+</button>
       <button type="button" aria-label="Pomniejsz mapę" disabled={zoom <= MIN_ZOOM} onClick={() => changeZoom(-1)}>−</button>
     </div>}
     {networkId !== 'synthetic-v1' && <p className="map-credit"><a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a></p>}
   </div>;
+}
+
+function rotateAround(point: Point, center: Point, angle: number): Point {
+  const x = point.x - center.x;
+  const y = point.y - center.y;
+  const sin = Math.sin(angle);
+  const cos = Math.cos(angle);
+  return { x: center.x + x * cos - y * sin, y: center.y + x * sin + y * cos };
+}
+
+function rotatedTileBounds(view: Point & { width: number; height: number }, center: Point, angle: number) {
+  const corners = [view, { x: view.x + view.width, y: view.y },
+    { x: view.x, y: view.y + view.height }, { x: view.x + view.width, y: view.y + view.height }]
+    .map(point => rotateAround(point, center, angle));
+  const x = Math.min(...corners.map(point => point.x));
+  const y = Math.min(...corners.map(point => point.y));
+  return { x, y, width: Math.max(...corners.map(point => point.x)) - x,
+    height: Math.max(...corners.map(point => point.y)) - y };
+}
+
+function RouteStroke({ points, color, width, dash, opacity = 1 }: {
+  points?: string; color: string; width: number; dash?: string; opacity?: number;
+}) {
+  if (!points) return null;
+  return <g fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" opacity={opacity}>
+    <polyline points={points} stroke="#fff" strokeWidth={width + 2} strokeDasharray={dash} vectorEffect="non-scaling-stroke" />
+    <polyline points={points} stroke={color} strokeWidth={width} strokeDasharray={dash} vectorEffect="non-scaling-stroke" />
+  </g>;
 }
 
 function projectPosition(position?: [number, number]) {
@@ -618,6 +732,9 @@ interface EndpointProps {
   marker: string;
   selected: string;
   accessLabel?: string;
+  addressLabel?: string;
+  addresses?: Address[];
+  chooseAddress: (address: Address) => boolean;
   names?: Map<string, string>;
   active: boolean;
   activate: () => void;
@@ -625,13 +742,29 @@ interface EndpointProps {
   choose: (id: string) => void;
 }
 
-function EndpointField({ label, marker, selected, names, active, activate, choose, clear, accessLabel }: EndpointProps) {
+function normalize(value: string) {
+  return value.toLocaleLowerCase('pl').normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '').replaceAll('ł', 'l').trim().replace(/\s+/g, ' ');
+}
+
+function EndpointField({ label, marker, selected, names, active, activate, choose, clear, accessLabel, addressLabel, addresses, chooseAddress }: EndpointProps) {
   const [query, setQuery] = useState<string>();
-  const term = query?.trim().toLocaleLowerCase('pl') ?? '';
+  const term = normalize(query ?? '');
+  const searchingAddress = /\d/.test(term);
+  const addressMatches = useMemo(() => {
+    if (!active || !searchingAddress || term.length < 2 || !addresses) return [];
+    const partial: Address[] = [];
+    for (const address of addresses) {
+      const name = normalize(address[0]);
+      if (name === term || name.endsWith(' ' + term)) return [address, ...partial.slice(0, 5)];
+      if (partial.length < 6 && name.includes(term)) partial.push(address);
+    }
+    return partial;
+  }, [active, searchingAddress, term, addresses]);
   const matches = new Map<string, string>();
   if (active && term.length >= 2 && names) {
     for (const [id, name] of names) {
-      if (name.toLocaleLowerCase('pl').includes(term) && !matches.has(name)) matches.set(name, id);
+      if (normalize(name).includes(term) && !matches.has(name)) matches.set(name, id);
       if (matches.size === 6) break;
     }
   }
@@ -641,7 +774,7 @@ function EndpointField({ label, marker, selected, names, active, activate, choos
   }}>
     <div className="endpoint-row"><label><span className={`endpoint-marker marker-${marker}`}>{marker}</span>
       <span>{label}</span>
-      <input type="search" placeholder="Wpisz ulicę lub kliknij mapę" value={query ?? (accessLabel ? `Pinezka ${marker}` : selected ? names?.get(selected) ?? `Punkt ${selected}` : '')}
+      <input type="search" placeholder="Wpisz ulicę lub adres" value={query ?? (addressLabel ?? (accessLabel ? `Pinezka ${marker}` : selected ? names?.get(selected) ?? `Punkt ${selected}` : ''))}
         onFocus={event => { activate(); event.currentTarget.select(); }}
         onChange={event => setQuery(event.currentTarget.value)} />
     </label>
@@ -650,8 +783,11 @@ function EndpointField({ label, marker, selected, names, active, activate, choos
     </div>
     {accessLabel && <p className="map-tip">{marker === 'A' ? 'Start auta' : 'Koniec dojazdu'} · {accessLabel}</p>}
     {active && term.length >= 2 && names && <ul className="street-matches">
-      {matches.size === 0 && <li>Brak ulic w tym wycinku.</li>}
-      {[...matches].map(([name, id]) => <li key={name}>
+      {searchingAddress && addressMatches.length === 0 && matches.size === 0 && <li>Brak adresu w tym wycinku.</li>}
+      {!searchingAddress && matches.size === 0 && <li>Brak ulic w tym wycinku.</li>}
+      {addressMatches.map(address => <li key={address[0]}><button type="button"
+        onClick={() => { if (chooseAddress(address)) setQuery(undefined); }}>{address[0]}</button></li>)}
+      {(!searchingAddress || addressMatches.length === 0) && [...matches].map(([name, id]) => <li key={name}>
         <button type="button" onClick={() => { choose(id); setQuery(undefined); }}>{name}</button>
       </li>)}
     </ul>}

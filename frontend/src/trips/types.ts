@@ -20,5 +20,5 @@ export interface FieldError { field: string; message: string }
 export const defaultConfig: TripConfig = {
   scenarioId: 'gdansk-v3', startNodeId: '', destinationNodeId: '', randomSeed: 42,
   vehicle: { maxSpeedMps: 13.89, accelerationMps2: 2, brakingMps2: 3 },
-  navigation: { observationRangeM: 1500, decisionIntervalSeconds: 1 }, maxDurationSeconds: 1800, trafficMode: 'NONE',
+  navigation: { observationRangeM: 1500, decisionIntervalSeconds: 1 }, maxDurationSeconds: 3000, trafficMode: 'NONE',
 };

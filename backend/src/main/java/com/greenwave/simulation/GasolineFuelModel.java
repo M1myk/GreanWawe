@@ -6,6 +6,7 @@ final class GasolineFuelModel {
     private static final double MPS_PER_MPH = 0.44704;
     private static final double NEWTONS_PER_LBF = 4.448221615;
     private static final double DRIVETRAIN_EFFICIENCY = 0.88;
+    private static final double LAUNCH_EFFICIENCY = 0.65;
     private static final double GASOLINE_GRAMS_PER_LITER = 745;
     private static final double TRANSIENT_GRAMS_PER_RAD_PER_SECOND = 0.007;
     private static final double FINAL_DRIVE = 3.59;
@@ -21,7 +22,7 @@ final class GasolineFuelModel {
         return step(before, after, meters, seconds).liters();
     }
 
-    record Step(double liters, double transientLiters) {}
+    record Step(double liters, double accelerationCorrectionLiters) {}
 
     static Step step(double before, double after, double meters, double seconds) {
         double meanSpeed = (before + after) / 2;
@@ -36,8 +37,12 @@ final class GasolineFuelModel {
         double powerKw = engineJoules / (seconds * 1000);
         double grams = TRANSIENT_GRAMS_PER_RAD_PER_SECOND * Math.max(0, engineSpeed(after) - engineSpeed(before));
         double transientLiters = grams / seconds >= 0.1 ? grams / GASOLINE_GRAMS_PER_LITER : 0;
-        double steady = engineJoules / 3_600_000 * specificFuel(powerKw) / GASOLINE_GRAMS_PER_LITER;
-        return new Step(Math.max(idle, steady) + transientLiters, transientLiters);
+        double fuelPerJoule = specificFuel(powerKw) / (3_600_000 * GASOLINE_GRAMS_PER_LITER);
+        double launchFraction = Math.max(0, 1 - meanSpeed / LOW_GEAR_END_MPS);
+        double efficiency = DRIVETRAIN_EFFICIENCY - (DRIVETRAIN_EFFICIENCY - LAUNCH_EFFICIENCY) * launchFraction;
+        double extraJoules = Math.max(0, kineticChange) * (1 / efficiency - 1 / DRIVETRAIN_EFFICIENCY);
+        double correction = transientLiters + extraJoules * fuelPerJoule;
+        return new Step(Math.max(idle, engineJoules * fuelPerJoule) + correction, correction);
     }
 
     private static double engineSpeed(double roadSpeed) {

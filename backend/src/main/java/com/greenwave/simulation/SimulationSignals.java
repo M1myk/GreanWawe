@@ -28,7 +28,7 @@ final class SimulationSignals {
                     int hash = node.hashCode();
                     if (Math.floorMod(hash, 3) != 0) continue;
                     var type = hash % 2 == 0 ? SignalProgram.Type.FIXED : SignalProgram.Type.PEDESTRIAN;
-                    signals.put(node, new Definition(type, Math.floorMod(hash, 600)));
+                    signals.put(node, new Definition(type, Math.floorMod(hash, SignalProgram.FIXED_CYCLE_TICKS)));
                 }
             }
             return new Scenario(Set.copyOf(junctions), Map.copyOf(signals));

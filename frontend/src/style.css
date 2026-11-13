@@ -82,28 +82,8 @@ fieldset { border: 0; margin: 0; padding: 0; }
   padding-top: .65rem;
 }
 .baseline-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; }
-.baseline-actions button, .baseline-actions select { min-height: 36px; }
-.baseline-actions label { display: flex; align-items: center; margin: 0; }
-.baseline-actions select { width: auto; padding: 4px 8px; }
+.baseline-actions button { min-height: 36px; }
 .route-panel .baseline-controls p { margin: 0; }
-
-.route-panel--driving > :not(.driving-summary, .baseline-controls, .route-options) { display: none; }
-.driving-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
-.driving-heading div, .driving-next { display: grid; gap: 4px; }
-.driving-heading div > span { font-size: .8rem; }
-.driving-heading strong { font-size: 1.25rem; line-height: 1.2; }
-.driving-heading button { padding: 0; width: 44px; height: 44px; flex: none; font-size: 1.5rem; }
-.driving-next { margin-top: 12px; padding: 10px 12px; background: #eef5ff; border-radius: 8px; }
-.driving-readouts { display: flex; flex-wrap: wrap; gap: 4px 12px; font-variant-numeric: tabular-nums; }
-.driving-phase { display: flex; align-items: center; gap: 8px; }
-.driving-phase i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
-.phase-green { background: #14884c; }
-.phase-yellow { background: #ffbf30; }
-.phase-red { background: #d72c35; }
-.route-panel--driving { width: min(340px, calc(100% - 32px)); }
-@media (max-width: 760px) {
-  .route-panel--driving { top: auto; bottom: 28px; max-height: 42%; }
-}
 
 .comparison-metrics { width: 100%; border-collapse: collapse; font-size: .82rem; font-variant-numeric: tabular-nums; }
 .comparison-metrics th, .comparison-metrics td { padding: 4px 5px; border-bottom: 1px solid #e3eae5; text-align: left; }
@@ -114,7 +94,7 @@ fieldset { border: 0; margin: 0; padding: 0; }
 .follow-options { display: flex; gap: 6px; margin-top: 8px; }
 .follow-options button { padding: 5px 10px; background: #edf3f0; color: #17352c; }
 .follow-options button[aria-pressed="true"] { background: #1458bf; color: white; }
-.follow-options button:last-child[aria-pressed="true"] { background: #087a48; }
+.follow-options button:last-of-type[aria-pressed="true"] { background: #087a48; }
 .route-header-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 
 .route-panel .traffic-select { margin: 10px 0 0; }
@@ -131,3 +111,141 @@ fieldset { border: 0; margin: 0; padding: 0; }
 .route-options li span { font-size: .8rem; }
 .route-options button { justify-self: start; padding: 4px 8px; background: #f0e6f8; color: #602695; }
 .route-options button[aria-pressed="true"] { background: #7136ad; color: white; }
+
+
+.route-panel--driving > :not(.driving-dock, .baseline-controls, .route-options, .route-notices) { display: none; }
+.driving-banner, .route-panel--driving {
+  position: absolute;
+  z-index: 2;
+  inset-inline-start: max(14px, env(safe-area-inset-left));
+  width: min(440px, calc(100% - 28px));
+  border-radius: 22px;
+  color: #f6faf9;
+  box-shadow: 0 8px 28px #14282540;
+}
+.driving-banner {
+  top: max(14px, env(safe-area-inset-top));
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: #075a49;
+  padding: 16px 20px;
+  line-height: 1.25;
+}
+.driving-direction { font-size: 2.65rem; font-weight: 750; line-height: 1; }
+.driving-instructions { min-width: 0; display: grid; gap: 5px; overflow-wrap: anywhere; }
+.driving-caption { font-size: .8rem; color: #cbe0da; }
+.driving-street { font-size: clamp(1.2rem, 3vw, 1.85rem); line-height: 1.08; }
+.driving-next { display: grid; gap: 3px; font-size: .87rem; }
+.driving-readouts { display: flex; flex-wrap: wrap; gap: 4px 12px; color: #dceee8; }
+.driving-phase { display: inline-flex; align-items: center; gap: 5px; }
+.driving-phase i { width: 9px; height: 9px; border-radius: 50%; }
+.phase-green { background: #5ce49a; }
+.phase-yellow { background: #ffce45; }
+.phase-red { background: #ff827a; }
+
+.route-panel--driving {
+  top: auto;
+  bottom: max(26px, env(safe-area-inset-bottom));
+  max-height: min(46%, 420px);
+  padding: 12px 16px;
+  background: #172429;
+  border-color: #34494e;
+  line-height: 1.35;
+}
+.driving-dock-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.driving-dock-heading div { display: grid; gap: 2px; }
+.driving-dock-heading strong { font-size: clamp(1.25rem, 3vw, 1.75rem); }
+.driving-exit { width: 48px; height: 48px; padding: 0; flex: none; border-radius: 50%; background: #c32f28; font-size: 1.75rem; }
+.route-panel--driving .follow-options { align-items: center; flex-wrap: wrap; }
+.route-panel--driving .follow-options > span { margin-inline-start: auto; font-variant-numeric: tabular-nums; font-size: .85rem; }
+.route-panel--driving .baseline-controls { border-color: #405256; }
+.route-panel--driving .comparison-metrics :is(th, td), .route-panel--driving .route-options li { border-color: #405256; }
+.route-panel--driving .baseline-actions button { padding: 6px 12px; }
+.route-panel--driving .comparison-result { color: #17352c; }
+.route-panel--driving .note { color: #cbe0da; }
+.route-panel--driving .route-options summary, .driving-metrics summary { color: #e5d6ff; cursor: pointer; }
+.forecast-gain { color: #126745; }
+.route-panel--driving .forecast-gain { color: #75e4a8; }
+.map-surface--driving .map-controls { top: 40%; bottom: auto; z-index: 1; }
+@media (max-width: 600px) {
+  .driving-banner { padding: 13px 16px; gap: 11px; }
+  .driving-banner, .route-panel--driving { width: auto; inset-inline-end: max(14px, env(safe-area-inset-right)); }
+  .map-surface--driving .map-controls { right: 14px; top: 34%; }
+}
+
+
+.route-notices { margin: 8px 0; padding: 8px 12px; list-style: none; background: #f2ecfa; color: #4d2b70; border-radius: 8px; font-size: .82rem; }
+.route-panel--driving .route-notices { background: #342d42; color: #f0e5ff; }
+.comparison-result { padding: 8px; background: #edf5ef; border-radius: 6px; }
+.comparison-result dl { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 5px 0 0; }
+.comparison-result dt { font-size: .8rem; }
+.comparison-result dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.driving-speed-limit {
+  display: grid;
+  place-content: center;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  margin-inline-start: auto;
+  border: 4px solid #cb302c;
+  border-radius: 50%;
+  background: white;
+  color: #172429;
+  text-align: center;
+  line-height: 1;
+}
+.driving-speed-limit strong { font-size: 1.15rem; }
+.driving-speed-limit span { font-size: .57rem; }
+
+.example-routes { display: flex; flex-wrap: wrap; gap: 6px; margin-block-end: 8px; }
+.example-routes button { padding: 6px 10px; text-align: start; font-size: .85rem; }
+.route-panel--driving > .example-routes { display: none; }
+@media (max-width: 760px) {
+  .route-panel, .driving-banner {
+    inset-inline: 0;
+    width: min(440px, calc(100% - 28px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    margin-inline: auto;
+  }
+}
+
+
+.playback-rate { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.baseline-actions .playback-rate-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 62px;
+  padding: 4px 9px;
+  border: 1px solid #9ab3a4;
+  background: white;
+  color: #17352c;
+}
+.playback-rate-options {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 4px;
+  min-width: 78px;
+  max-width: calc(100vw - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #b3c7bb;
+  border-radius: 9px;
+  background: white;
+  color: #17352c;
+  box-shadow: 0 5px 18px #14282540;
+}
+.playback-rate-options button {
+  display: block;
+  width: 100%;
+  padding: 5px 9px;
+  background: white;
+  color: #17352c;
+  text-align: start;
+}
+.playback-rate-options button:hover { background: #edf5ef; }
+.playback-rate-options button[aria-pressed="true"] { background: #176244; color: white; }
+.playback-rate-options button:focus-visible { outline-offset: -3px; }

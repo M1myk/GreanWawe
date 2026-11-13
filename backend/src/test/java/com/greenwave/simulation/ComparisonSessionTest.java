@@ -17,7 +17,7 @@ class ComparisonSessionTest {
 
     @Test void playbackRateDoesNotChangeResultsAndTheFirstArrivalStaysFrozen() {
         var slow = comparison(1);
-        var fast = comparison(5);
+        var fast = comparison(10);
         BaselineSimulation.Metrics firstArrival = null;
         for (int i = 0; i < 1000 && slow.status() == ComparisonSnapshot.Status.RUNNING; i++) {
             slow.pulse();

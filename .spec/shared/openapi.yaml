@@ -1753,7 +1753,8 @@
               0.5,
               1,
               2,
-              5
+              5,
+              10
             ]
           }
         }
@@ -1799,7 +1800,8 @@
               0.5,
               1,
               2,
-              5
+              5,
+              10
             ]
           },
           "routeGeometry": {
@@ -1932,7 +1934,7 @@
                   "null"
                 ],
                 "minimum": 0,
-                "description": "Transient acceleration correction already included in fuelLiters."
+                "description": "Low-speed drivetrain and transient acceleration correction already included in fuelLiters."
               }
             }
           },
@@ -1958,6 +1960,10 @@
             "properties": {
               "currentStreet": {
                 "type": "string"
+              },
+              "roadSpeedLimitMps": {
+                "type": ["number", "null"],
+                "exclusiveMinimum": 0
               },
               "upcoming": {
                 "type": [
@@ -2102,6 +2108,50 @@
                 "congestionDelaySeconds": {
                   "type": "number",
                   "minimum": 0
+                },
+                "scoreGainSeconds": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "requiredGainSeconds": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "routeNotices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "gainSeconds",
+                "reason"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "atSeconds": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "gainSeconds": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "reason": {
+                  "enum": [
+                    "SELECTED",
+                    "COMMITTED",
+                    "ESTIMATE_CHANGED",
+                    "CANDIDATE_REMOVED"
+                  ]
                 }
               }
             }
@@ -2150,7 +2200,8 @@
               0.5,
               1,
               2,
-              5
+              5,
+              10
             ]
           },
           "expectedRevision": {

@@ -23,3 +23,7 @@ V5 extends the eastern edge to 18.652 E. Four additional OpenStreetMap XML extra
 ## Turn and roundabout metadata
 
 V7 loads maneuver metadata from the same November 2026 OSM extracts and keeps the existing geometry and edge IDs. The v3 graph has 129 prohibited directed edge sequences and 257 edges in roundabout groups. Mandatory turns are translated to prohibited competing transitions. Via-node and via-way restrictions are supported for cars when the relation can be resolved on the imported graph. Conditional restrictions, missing OSM tags and lane-level traffic rules are outside the current model. Reproduce the additive migration with python3 scripts/import-road-rules.py followed by the original OSM extracts.
+
+## Address index
+
+The optional Gdańsk search index bundles 8,438 street and house-number labels derived from the same November 2026 OSM extracts. Explicit address points take precedence over approximate building centers. The index covers tagged addresses in the source extracts. It is distributed under ODbL 1.0 with OpenStreetMap attribution. Rebuild it with `python3 scripts/import-road-addresses.py frontend/public/gdansk-addresses.json extract.osm [more.osm ...]`.

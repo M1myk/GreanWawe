@@ -15,6 +15,12 @@ function App() {
     <RoadMap key={networkId} networkId={networkId} start={config.startNodeId}
       destination={config.destinationNodeId} comparisonConfig={config} fullScreen
       onSelect={(field, id) => setConfig(current => ({ ...current, [field]: id }))}
+      loadExample={rushHour => {
+        setNetworkId(defaultConfig.scenarioId);
+        setConfig(rushHour
+          ? { ...defaultConfig, startNodeId: '9787092128', destinationNodeId: '4655485657', trafficMode: 'RUSH_HOUR' }
+          : { ...defaultConfig, startNodeId: '10772019315', destinationNodeId: '10159165674' });
+      }}
       onTrafficMode={trafficMode => setConfig(current => ({ ...current, trafficMode }))}
       resetMap={networkId === defaultConfig.scenarioId ? undefined : () => {
         setConfig(defaultConfig);

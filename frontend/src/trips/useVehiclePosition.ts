@@ -38,14 +38,18 @@ export function useVehiclePosition(snapshot?: SimulationSnapshot) {
   }, [snapshot]);
 
   if (!snapshot) return undefined;
-  if (snapshot.status !== 'RUNNING' || frame?.snapshot.id !== snapshot.id
-    || frame.distance > snapshot.metrics.distanceM) return snapshot.vehicle.position;
-  return positionAlongRoute(snapshot, frame.distance);
+  const confirmed = snapshot.metrics.distanceM;
+  const interpolate = snapshot.status === 'RUNNING' && frame?.snapshot.id === snapshot.id && frame.distance <= confirmed;
+  const distance = interpolate ? frame.distance : confirmed;
+  return {
+    position: interpolate ? positionAlongRoute(snapshot, distance) : snapshot.vehicle.position,
+    segment: routeSegment(snapshot, distance),
+  };
 }
 
-function positionAlongRoute(snapshot: SimulationSnapshot, distance: number): [number, number] {
+export function routeSegment(snapshot: SimulationSnapshot, distance: number) {
   const { routeGeometry, routeCumulativeMeters } = snapshot;
-  if (!routeCumulativeMeters || routeCumulativeMeters.length !== routeGeometry.length) return snapshot.vehicle.position;
+  if (routeGeometry.length < 2 || routeCumulativeMeters?.length !== routeGeometry.length) return undefined;
   let low = 0;
   let high = routeCumulativeMeters.length - 1;
   while (high - low > 1) {
@@ -53,10 +57,15 @@ function positionAlongRoute(snapshot: SimulationSnapshot, distance: number): [nu
     if (routeCumulativeMeters[middle] > distance) high = middle;
     else low = middle;
   }
-  const length = routeCumulativeMeters[high] - routeCumulativeMeters[low];
-  if (length <= 0) return snapshot.vehicle.position;
-  const ratio = Math.min(1, Math.max(0, (distance - routeCumulativeMeters[low]) / length));
-  const [lon, lat] = routeGeometry[low];
-  const [nextLon, nextLat] = routeGeometry[high];
+  return { from: routeGeometry[low], to: routeGeometry[high],
+    start: routeCumulativeMeters[low], end: routeCumulativeMeters[high] };
+}
+
+function positionAlongRoute(snapshot: SimulationSnapshot, distance: number): [number, number] {
+  const segment = routeSegment(snapshot, distance);
+  if (!segment || segment.end <= segment.start) return snapshot.vehicle.position;
+  const ratio = Math.min(1, Math.max(0, (distance - segment.start) / (segment.end - segment.start)));
+  const [lon, lat] = segment.from;
+  const [nextLon, nextLat] = segment.to;
   return [lon + (nextLon - lon) * ratio, lat + (nextLat - lat) * ratio];
 }

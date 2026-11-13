@@ -4,6 +4,8 @@ import com.greenwave.network.NetworkController.Edge;
 import com.greenwave.network.RoadNetworkReader;
 import com.greenwave.network.RoadRoute;
 import com.greenwave.shared.api.ApiException;
+import com.greenwave.trip.domain.TrafficMode;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import org.junit.jupiter.api.Test;
@@ -15,6 +17,31 @@ import static org.junit.jupiter.api.Assertions.*;
         properties = "spring.datasource.url=jdbc:sqlite:file:gdansk-stage6?mode=memory&cache=shared")
 class GdanskStage6SmokeTest {
     @Autowired RoadNetworkReader networks;
+
+    @Test void demonstrationExplainsCommittedTurnWithoutChangingRoute() {
+        var network = networks.get("gdansk-v3");
+        var edges = RoadRoute.findEdges(network, "1319985144", "11724815621", 13.89);
+        var traffic = SimulationTraffic.create(network, TrafficMode.NORMAL, 42);
+        var settings = new SimulationSettings(13.89, 2, 3, 1500, 10, 18_000);
+        var run = new BaselineSimulation(edges, 42, SimulationSignals.Scenario.from(network),
+                BaselineSimulation.Algorithm.GREENWAVE, network, settings, traffic);
+        run.status(BaselineSimulation.Status.RUNNING);
+        for (int tick = 0; tick < 1751; tick++) run.advance();
+        var before = run.snapshot("demo", 1);
+        var faster = before.routeOptions().stream().filter(option -> !option.selected())
+                .min(Comparator.comparingDouble(BaselineSimulation.RouteOption::remainingSeconds)).orElseThrow();
+        assertTrue(faster.remainingSeconds() < before.routeOptions().getFirst().remainingSeconds());
+        assertTrue(faster.scoreGainSeconds() < faster.requiredGainSeconds());
+
+        for (int tick = 1751; tick < 1762; tick++) run.advance();
+        var committed = run.snapshot("demo", 1);
+        assertTrue(committed.routeNotices().stream().anyMatch(notice -> notice.id().equals(faster.id())
+                && notice.reason() == BaselineSimulation.NoticeReason.COMMITTED));
+        assertEquals(before.routeGeometry(), committed.routeGeometry());
+
+        for (int tick = 1762; tick < 1862; tick++) run.advance();
+        assertTrue(run.snapshot("demo", 1).routeNotices().isEmpty());
+    }
 
     @Test void sampledImportedRoutesCompleteForBothAlgorithms() {
         var network = networks.get("gdansk-v3");
