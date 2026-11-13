@@ -19,6 +19,8 @@ export interface RouteOption {
   remainingSeconds: number;
   signalWaitSeconds: number;
   congestionDelaySeconds: number;
+  scoreGainSeconds?: number | null;
+  requiredGainSeconds?: number | null;
 }
 
 export interface SimulationSnapshot {
@@ -31,6 +33,7 @@ export interface SimulationSnapshot {
   routeCumulativeMeters: number[];
   navigation: {
     currentStreet: string;
+    roadSpeedLimitMps?: number | null;
     upcoming: {
       type: 'SIGNAL' | 'JUNCTION';
       nextStreet: string;
@@ -44,6 +47,8 @@ export interface SimulationSnapshot {
   fuelFlowLitersPerHour?: number | null;
   queueMotion?: QueueMotion | null;
   routeOptions?: RouteOption[];
+  routeNotices?: { id: string; gainSeconds: number;
+    reason: 'SELECTED' | 'COMMITTED' | 'ESTIMATE_CHANGED' | 'CANDIDATE_REMOVED' }[];
   greenApproach?: { targetSpeedMps: number; estimatedCrossingSeconds: number; greenRemainingSeconds: number } | null;
   vehicle: { position: Coordinate; speedMps: number };
   signals: { id: string; position: Coordinate; phase: 'GREEN' | 'YELLOW' | 'RED'; type: string }[];
@@ -188,8 +193,16 @@ export function ComparisonControls({ routeKey, config, publish, driving, openDri
   }
 
   const terminal = status === 'COMPLETED' || status === 'FAILED';
+  const metrics = snapshot && <>
+    <p>Ruch · {trafficLabels[config.trafficMode ?? 'NONE']}</p>
+    <p>Czas symulacji {seconds(snapshot.simulationTimeSeconds)}</p>
+    <ComparisonMetrics snapshot={snapshot} />
+    {snapshot.runs[1].coasting && <p>GreenWave · toczenie bez wtrysku paliwa</p>}
+    {snapshot.runs.some(run => run.metrics.fuelLiters != null) &&
+      <p className="note">Szacowane zużycie benzyny · Mazda 3 2.0</p>}
+  </>;
   return <div className="baseline-controls" aria-label="Porównanie przejazdów">
-    <strong>A* i GreenWave</strong>
+    {!driving && <strong>A* i GreenWave</strong>}
     <div className="baseline-actions">
       {(!status || status === 'READY') && <button disabled={busy} onClick={() => void send('START')}>Rozpocznij teraz</button>}
       {status === 'RUNNING' && <button disabled={busy} onClick={() => void send('PAUSE')}>Pauza</button>}
@@ -198,18 +211,13 @@ export function ComparisonControls({ routeKey, config, publish, driving, openDri
       {snapshot && <button disabled={busy} onClick={() => void send('RESET')}>Reset</button>}
       {snapshot && <label>Tempo <select disabled={busy || terminal} value={snapshot.playbackRate}
         onChange={event => void send('SET_PLAYBACK_RATE', Number(event.target.value))}>
-        {[0.5, 1, 2, 5].map(rate => <option key={rate} value={rate}>{rate}×</option>)}
+        {[0.5, 1, 2, 5, 10].map(rate => <option key={rate} value={rate}>{rate}×</option>)}
       </select></label>}
     </div>
     {snapshot && <>
       <p role="status">{comparisonLabels[snapshot.status]}</p>
-      <p>Ruch · {trafficLabels[config.trafficMode ?? 'NONE']}</p>
-      <p>Czas symulacji {seconds(snapshot.simulationTimeSeconds)}</p>
-      <ComparisonMetrics snapshot={snapshot} />
-      {snapshot.runs[1].coasting && <p>GreenWave · toczenie bez wtrysku paliwa</p>}
-      {snapshot.runs.some(run => run.metrics.fuelLiters != null) &&
-        <p className="note">Szacowane zużycie benzyny · Mazda 3 2.0</p>}
-      {terminal && <p className="comparison-result">{resultText(snapshot)}</p>}
+      {terminal && <ComparisonResult snapshot={snapshot} />}
+      {driving ? <details className="driving-metrics"><summary>Statystyki przejazdu</summary>{metrics}</details> : metrics}
       {snapshot.failure && <p role="alert">{snapshot.failure.message}</p>}
     </>}
     {error && <p role="alert">{error}</p>}
@@ -245,11 +253,26 @@ function ComparisonMetrics({ snapshot }: { snapshot: ComparisonSnapshot }) {
   </table>;
 }
 
-function resultText(snapshot: ComparisonSnapshot) {
-  const difference = snapshot.timeSavedSeconds;
-  if (difference === null) return 'Brak porównywalnego czasu dojazdu.';
-  if (Math.abs(difference) < 0.05) return 'Oba auta dojechały w tym samym czasie.';
-  const percent = snapshot.timeSavedPercent === null ? '' : ' (' + Math.abs(snapshot.timeSavedPercent)
-    .toLocaleString('pl', { maximumFractionDigits: 1 }) + '%)';
-  return 'GreenWave ' + (difference > 0 ? 'szybciej' : 'wolniej') + ' o ' + seconds(Math.abs(difference)) + percent + '.';
+function ComparisonResult({ snapshot }: { snapshot: ComparisonSnapshot }) {
+  if (snapshot.timeSavedSeconds == null) {
+    return <p className="comparison-result">Brak porównywalnego czasu dojazdu.</p>;
+  }
+  const [astar, greenWave] = snapshot.runs.map(run => run.metrics);
+  const fuel = astar.fuelLiters == null || greenWave.fuelLiters == null
+    ? null : (greenWave.fuelLiters - astar.fuelLiters) * 1000;
+  return <div className="comparison-result">
+    <strong>GreenWave względem A*</strong>
+    <dl>
+      <div><dt>Czas</dt><dd>{signedDifference(-snapshot.timeSavedSeconds, 's')}</dd></div>
+      <div><dt>Paliwo</dt><dd>{signedDifference(fuel, 'ml')}</dd></div>
+      <div><dt>Zatrzymania</dt><dd>{signedDifference(greenWave.stopCount - astar.stopCount)}</dd></div>
+    </dl>
+  </div>;
+}
+
+function signedDifference(value: number | null, unit = '') {
+  if (value == null) return '—';
+  const magnitude = Math.round(Math.abs(value) * 10) / 10;
+  const sign = magnitude === 0 ? '' : value < 0 ? '−' : '+';
+  return sign + magnitude.toLocaleString('pl-PL') + (unit ? ' ' + unit : '');
 }

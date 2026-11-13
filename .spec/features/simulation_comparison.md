@@ -35,7 +35,7 @@ Fields, units, validation and errors follow the [shared REST contract](../shared
 ### CMP-02
 
 - Given: identical configuration, versions and seed.
-- When: runs execute at 1× and 5×.
+- When: runs execute at 1× and 10×.
 - Then: results are identical.
 
 ### CMP-03

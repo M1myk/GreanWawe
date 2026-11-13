@@ -4,7 +4,7 @@ The implemented single-run lifecycle and defaults are documented in the [stage 5
 
 ## Clock and lifecycle
 
-Proposed fixed step: 0.1 s. Store time as integer ticks and convert to seconds to avoid clock drift. Playback rates 0.5×/1×/2×/5× change tick throughput in real time, not tick length or outcomes.
+Proposed fixed step: 0.1 s. Store time as integer ticks and convert to seconds to avoid clock drift. Playback rates 0.5×/1×/2×/5×/10× change tick throughput in real time, not tick length or outcomes.
 
 READY → RUNNING ↔ PAUSED → COMPLETED. Execution failure leads to FAILED. START requires READY; PAUSE requires RUNNING; RESUME requires PAUSED. RESET from any state restores READY, time zero and both initial run states, and increases revision. Configuration is immutable; changing it creates another comparison.
 
@@ -12,9 +12,9 @@ A tick is atomic across both runs: update signals/events, construct observations
 
 ## Signals and randomness
 
-Fixed programs use GREEN → YELLOW → RED → GREEN with an offset from time zero. Intervals include the left boundary and exclude the right. On YELLOW, apply the 30 m stop-line rule below.
+Fixed programs use GREEN → YELLOW → RED → GREEN with an offset from time zero. The 60 s cycle contains 30 s green, 3 s yellow and 27 s red. Intervals include the left boundary and exclude the right. On YELLOW, apply the 30 m stop-line rule below.
 
-Pedestrian signals start GREEN. A request waits until minimum green has elapsed, then triggers YELLOW and RED for the crossing duration, then GREEN. Requests during waiting/service are merged and do not extend the current RED. New requests can be accepted after service ends.
+Pedestrian signals start GREEN. A request waits until minimum green has elapsed, then triggers 3 s of YELLOW and 10 s of RED for the crossing duration, then GREEN. Requests during waiting/service are merged and do not extend the current RED. New requests can be accepted after service ends.
 
 For each pedestrian signal, generate a Bernoulli trial with program probability p every whole simulation second, starting at t=1 s. Derive the timeline from the seed and stable signal ID independently of vehicle visits. The generator and its version belong to engineVersion. Planners never receive future trials, the seed or the schedule.
 
@@ -28,7 +28,7 @@ No collisions, queues, overtaking or vehicle interactions. Both algorithms use t
 
 ## Completion and metrics
 
-Proposed time limit: 1800 simulation seconds. Reaching the limit gives TIMEOUT, not arrival. A comparison completes when both runs are ARRIVED or TIMEOUT; an engine error gives FAILED with a reason code.
+Default time limit: 3000 simulation seconds. Reaching the limit gives TIMEOUT, not arrival. A comparison completes when both runs are ARRIVED or TIMEOUT; an engine error gives FAILED with a reason code.
 
 - travelTimeSeconds: start-to-arrival time; null before arrival and for TIMEOUT.
 - elapsedSeconds: elapsed run time up to the current or terminal state.

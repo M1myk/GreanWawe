@@ -181,3 +181,33 @@ Codex traced a missing active-edge queue observation and a route switch driven b
 The comparison API publishes the distinct paths from the latest evaluation and their estimated remaining time, signal wait and congestion delay. React draws the alternatives in violet and lets the operator highlight one. Added regression checks for active-edge queue observations, the congestion bypass, path publication, a marginal side-road gain and the comparison response.
 
 Maven test passed all 51 tests, including 18 sampled Gdańsk journeys and HTTP serialization of the route alternatives. The frontend production build, OpenAPI JSON parsing and git diff --check passed. The new overlays were not checked in a browser during this change.
+
+## Driving view and alternative time differences
+
+Codex updated the driving layout, route outlines and heading marker on the existing basemap. The UI compares each alternative's remaining-time estimate with the selected GreenWave route from the same snapshot. This estimate is shown separately from the measured comparison result.
+
+Three Node tests passed for faster, slower, similar and unavailable estimates. The frontend production build and git diff --check passed. In the local browser, a Kołobrzeska-to-Pomorska run showed the street, next junction and route overlays at desktop size and at 390 × 844. Highlighting a route updated the bottom panel. Closing and reopening driving view preserved the paused comparison.
+
+## Decision explanations and heading-up driving view
+
+Codex added backend switching diagnostics and temporary explanations for previously faster options that disappear. React shows those reasons, a demonstration preset, signed final differences in travel time, estimated fuel and stop count, and a heading-up driving map. The local browser confirmed that the example starts, the camera angle changes as the vehicle turns, the forecast-loss message appears, and exiting returns to north-up with the comparison still paused.
+
+Three deterministic runs on the imported Gdańsk network used seed 42, the 1,500 m observation range and a one-second decision interval. Initial ETA is the selected GreenWave forecast in the first snapshot. Actual time is the simulated arrival time.
+
+| Run | Initial GreenWave ETA | GreenWave actual | A* actual | GreenWave mid-drive reroutes |
+| --- | ---: | ---: | ---: | ---: |
+| Kołobrzeska to Pomorska, free flow | 276.6 s | 374.0 s | 421.4 s | 0 |
+| Demonstration, ordinary traffic, 7.9 km | 778.2 s | 1,185.3 s | 1,185.3 s | 0 |
+| Demonstration endpoints, free flow, 7.9 km | 778.2 s | 885.4 s | 885.3 s | 0 |
+
+The initial forecast underestimated all three journeys. Beyond the observation horizon, the estimator uses free flow and includes no unobserved signal wait. That is consistent with both long runs starting at the same ETA and finishing at different times. The ordinary-traffic run reproduced forecast loss at 61.1 s and a committed turn at 178.1 s. The explanations use the existing routing rule and do not recalibrate the switching threshold.
+
+Maven passed 52 tests, including the replay regression for both removal reasons, the switching threshold and notice expiry. Three frontend forecast tests, the production build, OpenAPI JSON parsing and git diff --check passed.
+
+## Trip limit, playback and signal timing
+
+The default run limit is 3,000 simulation seconds, and both playback APIs accept 10×. Both signal programs use a three-second yellow phase. The fixed program retains its sixty-second cycle and thirty-second green phase, giving it twenty-seven seconds of red. The driving banner displays the current segment's speed limit from the road network independently of actual vehicle speed.
+
+Replaying the ordinary-traffic demonstration with the new signal timing showed the Chłopska alternative becoming unavailable at 176.1 s. The earlier forecast-loss event documented above did not recur in this run. The regression now checks the faster alternative immediately before its turn is committed and checks that the notice expires.
+
+Maven passed all 55 tests, including the default timeout, both yellow phases, 10× command acceptance and playback invariance, and the speed limit update on entering another segment. The frontend build, three forecast tests, OpenAPI JSON parsing and git diff --check passed. The new sign was not inspected in the browser.

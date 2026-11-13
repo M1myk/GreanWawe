@@ -3,6 +3,12 @@ package com.greenwave.simulation;
 import java.util.Random;
 
 final class SignalProgram {
+    static final int FIXED_CYCLE_TICKS = 600;
+    static final int FIXED_GREEN_TICKS = 300;
+    static final int PEDESTRIAN_RED_TICKS = 100;
+    private static final int YELLOW_TICKS = 30;
+    private static final int FIXED_RED_START = FIXED_GREEN_TICKS + YELLOW_TICKS;
+
     enum Phase { GREEN, YELLOW, RED }
     enum Type { FIXED, PEDESTRIAN }
     record State(Phase phase, Integer remainingTicks, int phaseStart) {}
@@ -23,9 +29,9 @@ final class SignalProgram {
     void advance(int tick) {
         if (type == Type.FIXED) return;
         int elapsed = tick - phaseStart;
-        if (phase == Phase.YELLOW && elapsed >= 50) {
+        if (phase == Phase.YELLOW && elapsed >= YELLOW_TICKS) {
             transition(Phase.RED, tick);
-        } else if (phase == Phase.RED && elapsed >= 100) {
+        } else if (phase == Phase.RED && elapsed >= PEDESTRIAN_RED_TICKS) {
             transition(Phase.GREEN, tick);
         }
         if (tick > 0 && tick % 10 == 0) {
@@ -42,8 +48,8 @@ final class SignalProgram {
         if (type == Type.PEDESTRIAN) {
             Integer remaining = switch (phase) {
                 case GREEN -> null;
-                case YELLOW -> 50 - (tick - phaseStart);
-                case RED -> 100 - (tick - phaseStart);
+                case YELLOW -> YELLOW_TICKS - (tick - phaseStart);
+                case RED -> PEDESTRIAN_RED_TICKS - (tick - phaseStart);
             };
             return new State(phase, remaining, phaseStart);
         }
@@ -51,11 +57,11 @@ final class SignalProgram {
     }
 
     static State fixedAt(int tick, int offset) {
-        int cycle = Math.floorMod(tick + offset, 600);
+        int cycle = Math.floorMod(tick + offset, FIXED_CYCLE_TICKS);
         int start = tick - cycle;
-        if (cycle < 300) return new State(Phase.GREEN, 300 - cycle, start);
-        if (cycle < 350) return new State(Phase.YELLOW, 350 - cycle, start + 300);
-        return new State(Phase.RED, 600 - cycle, start + 350);
+        if (cycle < FIXED_GREEN_TICKS) return new State(Phase.GREEN, FIXED_GREEN_TICKS - cycle, start);
+        if (cycle < FIXED_RED_START) return new State(Phase.YELLOW, FIXED_RED_START - cycle, start + FIXED_GREEN_TICKS);
+        return new State(Phase.RED, FIXED_CYCLE_TICKS - cycle, start + FIXED_RED_START);
     }
 
     private void transition(Phase next, int tick) {

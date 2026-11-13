@@ -89,6 +89,12 @@ class TripPresetHttpTest {
                     start.replace("start", "resume").replace("START", "RESUME")).body()).get("status"));
             var reset = send("POST", commands, start.replace("start", "reset").replace("START", "RESET"));
             assertEquals(created.body(), reset.body());
+            var faster = send("POST", commands, """
+                    {"commandId":"fast","type":"SET_PLAYBACK_RATE","playbackRate":10}
+                    """);
+            assertEquals(200, faster.statusCode(), faster.body());
+            assertEquals(10, ((Number) object(faster.body()).get("playbackRate")).doubleValue());
+
         } finally {
             assertEquals(204, send("DELETE", path, null).statusCode());
         }
@@ -135,7 +141,7 @@ class TripPresetHttpTest {
     private String comparisonCommand(String id, long revision, String type) {
         return """
                 {"commandId":"%s","expectedRevision":%d,"type":"%s"%s}
-                """.formatted(id, revision, type, type.equals("SET_PLAYBACK_RATE") ? ",\"playbackRate\":5" : "");
+                """.formatted(id, revision, type, type.equals("SET_PLAYBACK_RATE") ? ",\"playbackRate\":10" : "");
     }
 
     private long revision(Map<String, Object> snapshot) {

@@ -5,7 +5,7 @@ import com.greenwave.trip.api.dto.TripConfigRequest;
 
 record SimulationSettings(double maxSpeed, double acceleration, double braking,
                           double observationRange, int decisionTicks, int maxTicks) {
-    static final SimulationSettings DEFAULT = new SimulationSettings(50 / 3.6, 2, 3, 1500, 10, 18_000);
+    static final SimulationSettings DEFAULT = new SimulationSettings(50 / 3.6, 2, 3, 1500, 10, 30_000);
 
     static SimulationSettings from(TripConfigRequest config) {
         double interval = config.navigation().decisionIntervalSeconds() / BaselineSimulation.STEP;

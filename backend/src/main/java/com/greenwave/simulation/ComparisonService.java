@@ -18,7 +18,7 @@ import static com.greenwave.simulation.ComparisonSnapshot.Status;
 
 @Service
 public class ComparisonService {
-    private static final Set<Double> RATES = Set.of(0.5, 1.0, 2.0, 5.0);
+    private static final Set<Double> RATES = Set.of(0.5, 1.0, 2.0, 5.0, 10.0);
     private static final long SESSION_IDLE_NANOS = Duration.ofMinutes(30).toNanos();
     private static final int CAPACITY = 32;
     private static final int COMMAND_HISTORY_LIMIT = 128;
@@ -115,7 +115,7 @@ public class ComparisonService {
             case RESUME -> transition(session, Status.PAUSED, Status.RUNNING, BaselineSimulation.Status.PAUSED, BaselineSimulation.Status.RUNNING);
             case SET_PLAYBACK_RATE -> {
                 if (request.playbackRate() == null || !RATES.contains(request.playbackRate())) {
-                    throw ApiException.invalid("playbackRate", "Use 0.5, 1, 2 or 5.");
+                    throw ApiException.invalid("playbackRate", "Use 0.5, 1, 2, 5 or 10.");
                 }
                 if (session.status() == Status.COMPLETED || session.status() == Status.FAILED) {
                     throw conflict("INVALID_COMPARISON_STATE", "Reset the comparison to change playback rate.");

@@ -28,11 +28,11 @@ final class GreenWavePlanner {
     record Observation(Integer fixedCycleTick, SignalProgram.Phase phase, Integer remainingTicks) {
         double waitSeconds(double arrivalSeconds) {
             if (fixedCycleTick != null) {
-                double cycle = (fixedCycleTick + arrivalSeconds / BaselineSimulation.STEP) % 600;
-                return cycle < 300 ? 0 : (600 - cycle) * BaselineSimulation.STEP;
+                double cycle = (fixedCycleTick + arrivalSeconds / BaselineSimulation.STEP) % SignalProgram.FIXED_CYCLE_TICKS;
+                return cycle < SignalProgram.FIXED_GREEN_TICKS ? 0 : (SignalProgram.FIXED_CYCLE_TICKS - cycle) * BaselineSimulation.STEP;
             }
             if (phase == SignalProgram.Phase.GREEN || remainingTicks == null) return 0;
-            int closedTicks = remainingTicks + (phase == SignalProgram.Phase.YELLOW ? 100 : 0);
+            int closedTicks = remainingTicks + (phase == SignalProgram.Phase.YELLOW ? SignalProgram.PEDESTRIAN_RED_TICKS : 0);
             return Math.max(0, closedTicks * BaselineSimulation.STEP - arrivalSeconds);
         }
     }
@@ -173,10 +173,14 @@ final class GreenWavePlanner {
 
     private static boolean canReplace(Estimate candidate, Estimate incumbent, Estimate initial, RoadRules.Context context) {
         if (!better(candidate, incumbent)) return false;
+        double required = requiredGain(candidate, incumbent, initial, context);
+        return required == 0 || incumbent.score() - candidate.score() >= required;
+    }
+
+    static double requiredGain(Estimate candidate, Estimate incumbent, Estimate initial, RoadRules.Context context) {
         if (context.previous() == null && candidate.maneuvers() <= incumbent.maneuvers()
-                && candidate.congestion() <= incumbent.congestion() + EPSILON_SECONDS) return true;
-        double margin = Math.max(5, 0.05 * (incumbent.score() - initial.score()));
-        return incumbent.score() - candidate.score() >= margin;
+                && candidate.congestion() <= incumbent.congestion() + EPSILON_SECONDS) return 0;
+        return Math.max(5, 0.05 * (incumbent.score() - initial.score()));
     }
 
     List<Candidate> evaluated() { return evaluated; }
@@ -220,7 +224,7 @@ final class GreenWavePlanner {
                 .toList();
     }
 
-    private Estimate estimate(List<Edge> route, Estimate initial, Observations observed, Edge previous) {
+    Estimate estimate(List<Edge> route, Estimate initial, Observations observed, Edge previous) {
         var result = initial;
         for (var edge : route) {
             result = traverse(result, previous, edge, observed);
