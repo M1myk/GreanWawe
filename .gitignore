@@ -51,3 +51,6 @@ chatgpt-source*
 chatgpt_source*
 /docs/greenwave-context.md
 /docs/private/
+
+# Docker Compose SQLite data
+/state/docker/

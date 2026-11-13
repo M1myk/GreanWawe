@@ -90,3 +90,7 @@ GreenWave run snapshots expose optional `routeOptions` with up to ten entries fr
 GreenWave route options may include `scoreGainSeconds` and `requiredGainSeconds`, measured in routing score seconds relative to the incumbent at the decision. They are null for the selected option or when the incumbent changed in that decision. An optional `routeNotices` array carries recent removals of previously faster options. Each entry contains the path `id`, its previous displayed `gainSeconds`, optional `atSeconds` identifying the simulation instant and a `reason` of SELECTED, COMMITTED, ESTIMATE_CHANGED or CANDIDATE_REMOVED.
 
 Navigation snapshots include `roadSpeedLimitMps` for the vehicle's current directed road segment. It reports the road network limit before applying vehicle, traffic, maneuver or simulation speed adjustments. Earlier stored snapshots may omit this field.
+
+Comparison snapshots may include `savedTimeExample`, a nullable Polish sentence shown when both vehicles arrive and GreenWave saves at least 30 seconds.
+
+The optional `savedTimeExampleSource` field identifies the selected sentence as `GEMINI` or `LOCAL`. A missing or null source means the source was not recorded.

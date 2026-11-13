@@ -26,11 +26,14 @@ public class ComparisonService {
     private final RoadNetworkReader networks;
     private final ScenarioRepository scenarios;
     private final ComparisonStore store;
+    private final SavedTimeExamples examples;
 
-    public ComparisonService(RoadNetworkReader networks, ScenarioRepository scenarios, ComparisonStore store) {
+    public ComparisonService(RoadNetworkReader networks, ScenarioRepository scenarios, ComparisonStore store,
+                             SavedTimeExamples examples) {
         this.networks = networks;
         this.scenarios = scenarios;
         this.store = store;
+        this.examples = examples;
     }
 
     ComparisonSnapshot create(TripConfigRequest config) {
@@ -145,11 +148,26 @@ public class ComparisonService {
                     LoggerFactory.getLogger(getClass()).error("Comparison tick failed", exception);
                     session.fail("ENGINE_FAILURE", "The comparison engine could not advance.");
                 }
-                if (session.status() != Status.RUNNING) store.save(session.snapshot());
+                switch (session.status()) {
+                    case RUNNING -> prefetchExample(session);
+                    case COMPLETED -> session.savedTimeExample = store.saveCompleted(session.snapshot(), session.exampleDraft);
+                    default -> store.save(session.snapshot());
+                }
             } catch (RuntimeException exception) {
                 LoggerFactory.getLogger(getClass()).error("Comparison storage failed", exception);
                 session.fail("STORAGE_FAILURE", "The comparison result could not be saved.");
             }
+        }
+    }
+
+    private void prefetchExample(ComparisonSession session) {
+        if (!examples.prefetchEnabled()) return;
+        int estimate = session.takeExampleEstimate();
+        if (estimate == 0) return;
+        try {
+            session.exampleDraft = examples.prefetch(estimate);
+        } catch (RuntimeException exception) {
+            LoggerFactory.getLogger(getClass()).warn("Saved-time example prefetch failed.");
         }
     }
 

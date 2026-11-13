@@ -46,3 +46,7 @@ trip_preset.version stores Hibernate's zero-based optimistic version, while API 
 ## Stage 7 storage
 
 V6 stores one row per comparison with a scenario foreign key, status and a typed JSON snapshot containing configuration, versions and both run metrics. One statement replaces the status and snapshot on completion, failure or reset. Active tick state stays in memory. A persisted READY snapshot serves as the recovery record for an interrupted run. Restart marks these records FAILED with BACKEND_RESTARTED. Session release or expiry discards unfinished records.
+
+## Saved-time examples
+
+V8 seeds `saved_time_example` with Polish sentences and half-open duration bands. The display history stores normalized topic and sentence keys in `saved_time_example_history`. Completion writes the selected sentence into the comparison snapshot in the same transaction as its history entry. Reset clears the sentence from the current result and retains the history for duplicate detection.
