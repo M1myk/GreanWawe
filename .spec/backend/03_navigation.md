@@ -53,4 +53,4 @@ Verify that an open main road beats a marginal side-road detour, a meaningful by
 
 ## Decision explanations
 
-Publish the routing score gain and required switching gain for each evaluated alternative, using the same eligibility rules as selection. Publish recent removals of previously faster alternatives for five simulation seconds. Identify a selected alternative, a divergence inside the committed prefix, or a slower recalculated ETA when the old path still shares the prefix. Use a neutral explanation for other removals from the bounded search. These diagnostics do not affect route selection.
+Publish the routing score gain and required switching gain for each evaluated alternative, using the same eligibility rules as selection. Publish recent removals of previously faster alternatives for ten simulation seconds. Identify a selected alternative, a divergence inside the committed prefix, or a slower recalculated ETA when the old path still shares the prefix. Use a neutral explanation for other removals from the bounded search. These diagnostics do not affect route selection.

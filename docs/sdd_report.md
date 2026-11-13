@@ -211,3 +211,13 @@ The default run limit is 3,000 simulation seconds, and both playback APIs accept
 Replaying the ordinary-traffic demonstration with the new signal timing showed the Chłopska alternative becoming unavailable at 176.1 s. The earlier forecast-loss event documented above did not recur in this run. The regression now checks the faster alternative immediately before its turn is committed and checks that the notice expires.
 
 Maven passed all 55 tests, including the default timeout, both yellow phases, 10× command acceptance and playback invariance, and the speed limit update on entering another segment. The frontend build, three forecast tests, OpenAPI JSON parsing and git diff --check passed. The new sign was not inspected in the browser.
+
+## Camera, decision notices, addresses and launch fuel
+
+The camera now eases toward the route heading on the shortest arc using frame time. Recent decision messages are retained in the browser for eight wall-clock seconds after first reception, including at 10×. The short example runs from Kołobrzeska to Pomorska. The rush-hour example reuses the exact road endpoints, traffic mode and seed from the comparison with arrival times of 1,960.5 s and 1,404.3 s.
+
+The revised gasoline model charges extra for low-speed acceleration. Replaying the rush-hour example produced 1,082.0 mL for A* over 7.29 km and 1,449.0 mL for GreenWave over 12.51 km. A* stopped 89 times and GreenWave 14 times. The low-speed and transient correction totals were 202.7 mL and 165.6 mL, respectively. The difference in total fuel fell from 388.6 mL to about 367 mL. The low-speed efficiency is a modeling assumption.
+
+The browser confirmed address selection, the rush-hour example, heading changes at 10×, a visible decision notice and equal 14 px side margins in the overview and driving mode at 390 × 844. The Maven suite, frontend build, three forecast tests, OpenAPI JSON parsing and git diff --check passed.
+
+The playback selector now opens an anchored browser popover. Browser checks verified placement 5 px above its trigger at 390 × 844 and 5 px below it on desktop, selection of 10×, and Escape dismissing the menu while Driving View remains open. The frontend production build passed.

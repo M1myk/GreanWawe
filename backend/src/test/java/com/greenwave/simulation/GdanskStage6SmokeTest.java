@@ -39,7 +39,7 @@ class GdanskStage6SmokeTest {
                 && notice.reason() == BaselineSimulation.NoticeReason.COMMITTED));
         assertEquals(before.routeGeometry(), committed.routeGeometry());
 
-        for (int tick = 1762; tick < 1812; tick++) run.advance();
+        for (int tick = 1762; tick < 1862; tick++) run.advance();
         assertTrue(run.snapshot("demo", 1).routeNotices().isEmpty());
     }
 

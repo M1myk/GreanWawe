@@ -5,6 +5,8 @@ import { algorithmNames, ComparisonControls } from './ComparisonControls';
 import type { Algorithm, ComparisonSnapshot } from './ComparisonControls';
 import { defaultConfig, trafficLabels, trafficModes, type TrafficMode, type TripConfig } from './types';
 import { DrivingSummary } from './DrivingSummary';
+import { useDrivingHeading } from './useDrivingHeading';
+import { useRouteNotices } from './useRouteNotices';
 import { useVehiclePosition } from './useVehiclePosition';
 import { alternativeForecast, timeDifference, timeDifferenceLabel } from './routeForecast';
 
@@ -27,6 +29,7 @@ const clampZoom = (zoom: number) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom))
 interface Node { id: string; lat: number; lon: number }
 interface Network { nodes: Node[]; edges: { id: string; fromNodeId: string; toNodeId: string; name: string; lengthM: number }[] }
 type Endpoint = 'startNodeId' | 'destinationNodeId';
+type Address = [label: string, lat: number, lon: number];
 interface Point { x: number; y: number }
 interface PinDrag {
   field: Endpoint;
@@ -42,7 +45,7 @@ interface Props {
   onTrafficMode?: (mode: TrafficMode) => void;
   resetMap?: () => void;
   openSaved?: () => void;
-  loadExample?: () => void;
+  loadExample?: (rushHour: boolean) => void;
   start: string;
   destination: string;
   onSelect: (field: Endpoint, id: string) => void;
@@ -53,7 +56,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   const [error, setError] = useState(false);
   const [field, setField] = useState<Endpoint>('startNodeId');
 
-  const [locations, setLocations] = useState<Partial<Record<Endpoint, { id: string; point: Point }>>>({});
+  const [locations, setLocations] = useState<Partial<Record<Endpoint, { id: string; point: Point; label?: string }>>>({});
   const [drag, setDrag] = useState<PinDrag>();
   const [hint, setHint] = useState('');
   const [preview, setPreview] = useState<{ key: string; geometry?: [number, number][]; lengthM?: number }>();
@@ -82,7 +85,17 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
   const segment = (follow === 'ASTAR' ? astarPosition : greenWavePosition)?.segment;
   const from = projectPosition(segment?.from);
   const to = projectPosition(segment?.to);
-  const heading = driving && from && to ? Math.atan2(to.x - from.x, from.y - to.y) : 0;
+  const heading = useDrivingHeading(from && to ? Math.atan2(to.x - from.x, from.y - to.y) : 0, driving);
+  const notices = useRouteNotices(greenWave);
+  const [addresses, setAddresses] = useState<Address[]>();
+  useEffect(() => {
+    if (!fullScreen || networkId !== 'gdansk-v3') return;
+    const controller = new AbortController();
+    fetch(import.meta.env.BASE_URL + 'gdansk-addresses.json', { signal: controller.signal })
+      .then(response => response.ok ? response.json() : undefined)
+      .then(setAddresses).catch(() => {});
+    return () => controller.abort();
+  }, [networkId, fullScreen]);
   const signals = [...new Map(simulation?.runs.flatMap(run => run.signals.map(signal => [signal.id, signal] as const))).values()];
 
   function openDriving() {
@@ -196,12 +209,12 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
     return () => observer.disconnect();
   }, [drawing, geographic]);
   const streetNames = drawing?.streetNames;
-  function updateEndpoint(endpoint: Endpoint, id: string, point?: Point) {
-    setLocations(current => ({ ...current, [endpoint]: point ? { id, point } : undefined }));
+  function updateEndpoint(endpoint: Endpoint, id: string, point?: Point, label?: string) {
+    setLocations(current => ({ ...current, [endpoint]: point ? { id, point, label } : undefined }));
     onSelect(endpoint, id);
   }
 
-  function placePin(endpoint: Endpoint, point: Point) {
+  function placePin(endpoint: Endpoint, point: Point, label?: string) {
     if (!drawing || !network) return false;
     const { bounds, points } = drawing;
     const centerX = bounds.x + bounds.width / 2;
@@ -217,7 +230,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
       return false;
     }
     const access = points.get(id);
-    updateEndpoint(endpoint, id, access && Math.hypot(access.x - point.x, access.y - point.y) < 0.01 ? undefined : point);
+    updateEndpoint(endpoint, id, access && Math.hypot(access.x - point.x, access.y - point.y) < 0.01 ? undefined : point, label);
     return true;
   }
   function changeZoom(delta: number) {
@@ -253,16 +266,27 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
       {resetMap && <button type="button" onClick={resetMap}>Mapa Gdańska</button>}
       <button type="button" onClick={openSaved}>Zapisane</button>
     </div></header>
-    {loadExample && <button type="button" className="secondary" onClick={() => {
-      setLocations({});
-      activate('startNodeId');
-      closeDriving();
-      loadExample();
-    }}>Wypróbuj przykład</button>}
+    {loadExample && <div className="example-routes">
+      {[false, true].map(rushHour => <button key={String(rushHour)} type="button" className="secondary" onClick={() => {
+        setLocations({});
+        activate('startNodeId');
+        closeDriving();
+        loadExample(rushHour);
+      }}>{rushHour ? 'Strzyża → Drzewieckiego · szczyt' : 'Wypróbuj przykład · Kołobrzeska → Pomorska'}</button>)}
+    </div>}
     {(['startNodeId', 'destinationNodeId'] as const).map((key, index) => {
       const selected = index ? destination : start;
       return <EndpointField key={key + ':' + selected} label={index ? 'Dokąd' : 'Skąd'}
         marker={index ? 'B' : 'A'} selected={selected} names={streetNames}
+        addresses={networkId === 'gdansk-v3' ? addresses : undefined}
+        addressLabel={locations[key]?.id === selected ? locations[key]?.label : undefined}
+        chooseAddress={([label, lat, lon]) => {
+          if (placePin(key, project({ id: '', lat, lon }), label)) {
+            activate(key === 'startNodeId' ? 'destinationNodeId' : key);
+            return true;
+          }
+          return false;
+        }}
         accessLabel={locations[key]?.id === selected && selected
           ? streetNames?.get(selected) || 'punkt na drodze' : undefined}
         active={field === key} activate={() => activate(key)}
@@ -294,8 +318,8 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
       {simulation ? 'Trasy porównania' : !route ? 'Wyznaczanie trasy…' : route.lengthM === undefined ? 'Nie udało się wyznaczyć dojazdu.'
         : `Trasa samochodowa · ${(route.lengthM / 1000).toLocaleString('pl', { maximumFractionDigits: 2 })} km`}
     </p>}
-    {!!greenWave?.routeNotices?.length && <ul className="route-notices" aria-label="Ostatnie decyzje GreenWave">
-      {greenWave.routeNotices.map(notice => <li key={notice.id}>
+    {notices.length > 0 && <ul className="route-notices" aria-label="Ostatnie decyzje GreenWave">
+      {notices.map(notice => <li key={notice.key}>
         Wariant wcześniej {forecastSeconds(notice.gainSeconds)} szybszy · {noticeLabels[notice.reason]}
       </li>)}
     </ul>}
@@ -708,6 +732,9 @@ interface EndpointProps {
   marker: string;
   selected: string;
   accessLabel?: string;
+  addressLabel?: string;
+  addresses?: Address[];
+  chooseAddress: (address: Address) => boolean;
   names?: Map<string, string>;
   active: boolean;
   activate: () => void;
@@ -715,13 +742,29 @@ interface EndpointProps {
   choose: (id: string) => void;
 }
 
-function EndpointField({ label, marker, selected, names, active, activate, choose, clear, accessLabel }: EndpointProps) {
+function normalize(value: string) {
+  return value.toLocaleLowerCase('pl').normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '').replaceAll('ł', 'l').trim().replace(/\s+/g, ' ');
+}
+
+function EndpointField({ label, marker, selected, names, active, activate, choose, clear, accessLabel, addressLabel, addresses, chooseAddress }: EndpointProps) {
   const [query, setQuery] = useState<string>();
-  const term = query?.trim().toLocaleLowerCase('pl') ?? '';
+  const term = normalize(query ?? '');
+  const searchingAddress = /\d/.test(term);
+  const addressMatches = useMemo(() => {
+    if (!active || !searchingAddress || term.length < 2 || !addresses) return [];
+    const partial: Address[] = [];
+    for (const address of addresses) {
+      const name = normalize(address[0]);
+      if (name === term || name.endsWith(' ' + term)) return [address, ...partial.slice(0, 5)];
+      if (partial.length < 6 && name.includes(term)) partial.push(address);
+    }
+    return partial;
+  }, [active, searchingAddress, term, addresses]);
   const matches = new Map<string, string>();
   if (active && term.length >= 2 && names) {
     for (const [id, name] of names) {
-      if (name.toLocaleLowerCase('pl').includes(term) && !matches.has(name)) matches.set(name, id);
+      if (normalize(name).includes(term) && !matches.has(name)) matches.set(name, id);
       if (matches.size === 6) break;
     }
   }
@@ -731,7 +774,7 @@ function EndpointField({ label, marker, selected, names, active, activate, choos
   }}>
     <div className="endpoint-row"><label><span className={`endpoint-marker marker-${marker}`}>{marker}</span>
       <span>{label}</span>
-      <input type="search" placeholder="Wpisz ulicę lub kliknij mapę" value={query ?? (accessLabel ? `Pinezka ${marker}` : selected ? names?.get(selected) ?? `Punkt ${selected}` : '')}
+      <input type="search" placeholder="Wpisz ulicę lub adres" value={query ?? (addressLabel ?? (accessLabel ? `Pinezka ${marker}` : selected ? names?.get(selected) ?? `Punkt ${selected}` : ''))}
         onFocus={event => { activate(); event.currentTarget.select(); }}
         onChange={event => setQuery(event.currentTarget.value)} />
     </label>
@@ -740,8 +783,11 @@ function EndpointField({ label, marker, selected, names, active, activate, choos
     </div>
     {accessLabel && <p className="map-tip">{marker === 'A' ? 'Start auta' : 'Koniec dojazdu'} · {accessLabel}</p>}
     {active && term.length >= 2 && names && <ul className="street-matches">
-      {matches.size === 0 && <li>Brak ulic w tym wycinku.</li>}
-      {[...matches].map(([name, id]) => <li key={name}>
+      {searchingAddress && addressMatches.length === 0 && matches.size === 0 && <li>Brak adresu w tym wycinku.</li>}
+      {!searchingAddress && matches.size === 0 && <li>Brak ulic w tym wycinku.</li>}
+      {addressMatches.map(address => <li key={address[0]}><button type="button"
+        onClick={() => { if (chooseAddress(address)) setQuery(undefined); }}>{address[0]}</button></li>)}
+      {(!searchingAddress || addressMatches.length === 0) && [...matches].map(([name, id]) => <li key={name}>
         <button type="button" onClick={() => { choose(id); setQuery(undefined); }}>{name}</button>
       </li>)}
     </ul>}

@@ -82,9 +82,7 @@ fieldset { border: 0; margin: 0; padding: 0; }
   padding-top: .65rem;
 }
 .baseline-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; }
-.baseline-actions button, .baseline-actions select { min-height: 36px; }
-.baseline-actions label { display: flex; align-items: center; margin: 0; }
-.baseline-actions select { width: auto; padding: 4px 8px; }
+.baseline-actions button { min-height: 36px; }
 .route-panel .baseline-controls p { margin: 0; }
 
 .comparison-metrics { width: 100%; border-collapse: collapse; font-size: .82rem; font-variant-numeric: tabular-nums; }
@@ -200,3 +198,54 @@ fieldset { border: 0; margin: 0; padding: 0; }
 }
 .driving-speed-limit strong { font-size: 1.15rem; }
 .driving-speed-limit span { font-size: .57rem; }
+
+.example-routes { display: flex; flex-wrap: wrap; gap: 6px; margin-block-end: 8px; }
+.example-routes button { padding: 6px 10px; text-align: start; font-size: .85rem; }
+.route-panel--driving > .example-routes { display: none; }
+@media (max-width: 760px) {
+  .route-panel, .driving-banner {
+    inset-inline: 0;
+    width: min(440px, calc(100% - 28px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    margin-inline: auto;
+  }
+}
+
+
+.playback-rate { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.baseline-actions .playback-rate-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 62px;
+  padding: 4px 9px;
+  border: 1px solid #9ab3a4;
+  background: white;
+  color: #17352c;
+}
+.playback-rate-options {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 4px;
+  min-width: 78px;
+  max-width: calc(100vw - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #b3c7bb;
+  border-radius: 9px;
+  background: white;
+  color: #17352c;
+  box-shadow: 0 5px 18px #14282540;
+}
+.playback-rate-options button {
+  display: block;
+  width: 100%;
+  padding: 5px 9px;
+  background: white;
+  color: #17352c;
+  text-align: start;
+}
+.playback-rate-options button:hover { background: #edf5ef; }
+.playback-rate-options button[aria-pressed="true"] { background: #176244; color: white; }
+.playback-rate-options button:focus-visible { outline-offset: -3px; }

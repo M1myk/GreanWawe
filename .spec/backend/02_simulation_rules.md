@@ -60,3 +60,5 @@ See [fuel model inputs](../../docs/fuel-model.md). The metrics field fuelLiters 
 ## Transient acceleration fuel
 
 Add a shared positive engine-speed transient correction to the wheel-work gasoline estimate. Use the EPA Mazda 2.0 calibration coefficient and a continuous low-gear road-speed approximation. Idle and fuel cut retain their existing behavior. Expose cumulative transient fuel separately in both runs. Historical snapshots without the new metric remain readable.
+
+The gasoline estimate models additional drivetrain losses during acceleration at low speed. The assumed effective efficiency rises linearly from 0.65 at rest to 0.88 at 20 km/h. Apply the additional work only to positive kinetic energy change. The reported acceleration correction includes this extra fuel and the existing transient correction. Use the same model for both algorithms.

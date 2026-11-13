@@ -61,3 +61,9 @@ In Driving View, keep the followed vehicle heading up by rotating the map around
 The example button loads the versioned Gdańsk demonstration configuration and lets the user start it with the usual controls. After both vehicles arrive, show the signed GreenWave differences for time, estimated fuel and stops above the detailed results. Verify the heading and compare projected and realized times on short signal, congested and long runs.
 
 The driving banner shows the followed vehicle's current road speed limit in km/h in a sign separate from its actual speed. Hide the sign for older snapshots with no limit.
+
+The driving camera eases toward route heading on the shortest angular arc using real frame time. Reduced-motion preferences apply. Recent route decisions remain readable for at least eight wall-clock seconds after first reception, independently of playback rate, and are cleared on reset or trip replacement. Center the overview panel, driving dock and banner with equal mobile gutters.
+
+The Gdańsk picker offers a short Kołobrzeska–Pomorska example and a separate rush-hour Strzyża–Drzewieckiego example based on the reproduced comparison. It searches a bundled, partial OpenStreetMap address index by street and house number. An address places the map pin and uses the existing reachable road access selection. Coverage depends on imported addresses.
+
+Anchor the playback rate menu to its trigger in the overview and Driving View. Open below the trigger when space permits and above it near the bottom edge. Keep the options within the viewport and above the scrollable panel. Support keyboard focus, Escape and outside dismissal.

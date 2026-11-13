@@ -39,7 +39,7 @@ final class BaselineSimulation {
     record RouteOption(String id, boolean selected, List<List<Double>> geometry, double remainingSeconds,
                        double signalWaitSeconds, double congestionDelaySeconds, Double scoreGainSeconds, Double requiredGainSeconds) {}
     enum NoticeReason { SELECTED, COMMITTED, ESTIMATE_CHANGED, CANDIDATE_REMOVED }
-    record RouteNotice(String id, double gainSeconds, NoticeReason reason) {}
+    record RouteNotice(String id, double gainSeconds, NoticeReason reason, double atSeconds) {}
     private record TimedNotice(RouteNotice notice, int expiresAt) {}
     record Snapshot(String id, Status status, double simulationTimeSeconds, double playbackRate,
                     List<List<Double>> routeGeometry, List<Double> routeCumulativeMeters, Vehicle vehicle, double effectiveMaxSpeedMps,
@@ -233,7 +233,7 @@ final class BaselineSimulation {
         double nextDistance = Math.min(distance + movement, Math.min(blockedAt, route.lengthM()));
         var stepFuel = GasolineFuelModel.step(speed, nextSpeed, nextDistance - distance, STEP);
         fuelLiters += stepFuel.liters();
-        accelerationFuelLiters += stepFuel.transientLiters();
+        accelerationFuelLiters += stepFuel.accelerationCorrectionLiters();
         fuelFlowLitersPerHour = stepFuel.liters() * 3600 / STEP;
         distance = nextDistance;
         while (nextStopLine < stopLines.size()) {
@@ -395,7 +395,7 @@ final class BaselineSimulation {
                 if (gain < 0.5) continue;
                 NoticeReason reason = removalReason(option.id(), next, paths, prefix, initial, observed);
                 if (reason != null) {
-                    routeNotices.add(new TimedNotice(new RouteNotice(option.id(), gain, reason), tick + 50));
+                    routeNotices.add(new TimedNotice(new RouteNotice(option.id(), gain, reason, tick * STEP), tick + 100));
                 }
             }
         }

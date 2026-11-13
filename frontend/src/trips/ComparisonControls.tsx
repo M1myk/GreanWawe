@@ -1,3 +1,4 @@
+import { PlaybackRate } from './PlaybackRate';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, request } from '../api/client';
 import { trafficLabels, type TripConfig } from './types';
@@ -47,7 +48,7 @@ export interface SimulationSnapshot {
   fuelFlowLitersPerHour?: number | null;
   queueMotion?: QueueMotion | null;
   routeOptions?: RouteOption[];
-  routeNotices?: { id: string; gainSeconds: number;
+  routeNotices?: { id: string; atSeconds?: number; gainSeconds: number;
     reason: 'SELECTED' | 'COMMITTED' | 'ESTIMATE_CHANGED' | 'CANDIDATE_REMOVED' }[];
   greenApproach?: { targetSpeedMps: number; estimatedCrossingSeconds: number; greenRemainingSeconds: number } | null;
   vehicle: { position: Coordinate; speedMps: number };
@@ -209,10 +210,8 @@ export function ComparisonControls({ routeKey, config, publish, driving, openDri
       {status === 'PAUSED' && <button disabled={busy} onClick={() => void send('RESUME')}>Wznów</button>}
       {snapshot && status !== 'READY' && !driving && <button type="button" onClick={openDriving}>Widok jazdy</button>}
       {snapshot && <button disabled={busy} onClick={() => void send('RESET')}>Reset</button>}
-      {snapshot && <label>Tempo <select disabled={busy || terminal} value={snapshot.playbackRate}
-        onChange={event => void send('SET_PLAYBACK_RATE', Number(event.target.value))}>
-        {[0.5, 1, 2, 5, 10].map(rate => <option key={rate} value={rate}>{rate}×</option>)}
-      </select></label>}
+      {snapshot && <PlaybackRate rate={snapshot.playbackRate} disabled={busy || terminal}
+        onChange={rate => void send('SET_PLAYBACK_RATE', rate)} />}
     </div>
     {snapshot && <>
       <p role="status">{comparisonLabels[snapshot.status]}</p>

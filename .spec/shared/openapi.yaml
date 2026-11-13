@@ -1934,7 +1934,7 @@
                   "null"
                 ],
                 "minimum": 0,
-                "description": "Transient acceleration correction already included in fuelLiters."
+                "description": "Low-speed drivetrain and transient acceleration correction already included in fuelLiters."
               }
             }
           },
@@ -2136,6 +2136,10 @@
               "properties": {
                 "id": {
                   "type": "string"
+                },
+                "atSeconds": {
+                  "type": "number",
+                  "minimum": 0
                 },
                 "gainSeconds": {
                   "type": "number",
