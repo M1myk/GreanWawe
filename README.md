@@ -253,7 +253,7 @@ See [road data provenance](docs/road-network-data.md) for the extract bounds, li
 
 ## Demonstration
 
-A short recording is linked below. Try the app yourself to choose your own endpoints, change the traffic level and see how the two approaches handle the same journey. [Watch the short recording](docs/greenwave-demo.mp4) · [Run the app](#run-with-docker-compose)
+To download the full GreenWave demo (1.3 GB), open the [GitHub release](https://github.com/M1myk/GreanWawe/releases/tag/v1.0.0-demo), expand **Assets**, and click `greenwave-demo.mp4`.
 
 ### Choose a route and set the traffic level
 
