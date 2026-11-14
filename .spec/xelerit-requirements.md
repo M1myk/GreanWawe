@@ -30,6 +30,6 @@ AI integration in the product is optional. Keep the project small enough for a s
 - [x] Setup works without an external database server.
 - [x] GIF/MP4 is included.
 - [x] Agent instructions are versioned.
-- [ ] Repository is public.
+- [x] Repository is public.
 
 See the [README](../README.md), [demo](../docs/greenwave-demo.mp4), [agent instructions](../AGENTS.md) and [verification report](../docs/sdd_report.md) for local submission evidence. The MP4 and stage 8 documentation are ready for review and still need to be included in the public submission.
