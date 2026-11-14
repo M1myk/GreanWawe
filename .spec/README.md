@@ -1,6 +1,6 @@
 # GreenWave — MVP specification v0.2
 
-Date: 2026-11-10. Status: stages 2–7 implemented; submission materials remain stage 8. Documentation and code comments are written in English.
+Date: 2026-11-10. Status: stages 2–7 implemented. Track stage 8 verification and submission in the Xelerit checklist. Documentation and code comments are written in English.
 
 ## Goal
 

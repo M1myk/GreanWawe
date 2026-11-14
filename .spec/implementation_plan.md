@@ -1,6 +1,6 @@
 # SDD implementation plan
 
-Status: stages 2–7 implemented. Submission materials remain stage 8.
+Status: stages 2–7 implemented. Stage 8 evidence and public submission status are tracked in the [Xelerit checklist](xelerit-requirements.md).
 
 1. Review the MVP and open decisions; agree on map scope and algorithm parameters in the specification.
 2. Create separate backend/frontend skeletons, pin compatible dependencies, configure CORS and document local setup.

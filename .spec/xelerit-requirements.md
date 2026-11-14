@@ -7,7 +7,7 @@ Based on the complete assignment supplied by the user on 2026-11-10. This replac
 | Small transport-themed full-stack MVP | Journey simulation and A*/GreenWave comparison | Working UI and API |
 | Basic CRUD operations | Saved trip configurations | Create/read/update/delete through UI, REST and SQLite |
 | Free choice of backend/frontend | Java and React in separate folders | Source and technical explanation |
-| In-memory or SQLite database without external servers | SQLite proposed | Local setup |
+| In-memory or SQLite database without external servers | SQLite | Local setup |
 | REST and CORS | Shared contract and configurable origin | FE/BE integration checks |
 | Intuitive, pleasant UI | Map, simple forms, controls and results | Manual review and demonstration |
 | Creative twist | Signal-aware route and speed adaptation | Visible algorithm comparison |
@@ -24,12 +24,12 @@ AI integration in the product is optional. Keep the project small enough for a s
 ## Submission checklist
 
 - [x] Full CRUD works in both layers and persists data.
-- [ ] Simulation and the distinctive feature work.
-- [ ] Relevant tests and builds pass.
-- [ ] README covers all four requested areas.
-- [ ] Setup works without an external database server.
-- [ ] GIF/MP4 is included.
-- [ ] Agent instructions are versioned.
+- [x] Simulation and the distinctive feature work.
+- [x] Relevant tests and builds pass.
+- [x] README covers all four requested areas.
+- [x] Setup works without an external database server.
+- [x] GIF/MP4 is included.
+- [x] Agent instructions are versioned.
 - [ ] Repository is public.
 
-Items remain open until actually completed and verified.
+See the [README](../README.md), [demo](../docs/greenwave-demo.mp4), [agent instructions](../AGENTS.md) and [verification report](../docs/sdd_report.md) for local submission evidence. The MP4 and stage 8 documentation are ready for review and still need to be included in the public submission.
