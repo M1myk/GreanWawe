@@ -231,3 +231,14 @@ Codex implemented asynchronous Gemini prefetch, a V8 SQLite migration for durati
 Codex added separate images for the backend and the built frontend. Compose serves the browser and proxied API on port 3000. The root environment file supplies runtime configuration and passes the Gemini key only to the backend. The existing SQLite database was copied into the Docker data directory using the SQLite backup API.
 
 Both images built and the services started through Compose. The frontend HTML, health endpoint and saved-trip API responded through the published frontend port. The two saved presets remained accessible after a backend restart. The environment check confirmed that the backend received a Gemini key and the frontend did not. This check did not call Gemini.
+
+
+## Stage 8 clean-source verification
+
+Codex expanded the README with the application purpose, use cases, feature inventory and simulation limitations. The demo uses a separate browser profile and a new local SQLite database. Playwright and the video encoder were temporary recording tools outside the project dependencies.
+
+A Git export of implementation commit `efda14a` started through Docker Compose with the example environment, a new SQLite directory and an isolated host port. The same-origin API health endpoint returned `UP`. Maven passed 58 tests. The frontend passed `npm ci`, the production build with type checking, and all three route forecast tests.
+
+The browser recording shows saved-trip creation, editing and deletion, then a completed Kołobrzeska–Pomorska comparison with the GreenWave driving view and the final metrics. [Watch the MP4](greenwave-demo.mp4).
+
+Two separate Docker instances ran the same synthetic rush-hour comparison with seed 42. Both persisted a 145.9 s GreenWave saving. The instance with the configured Gemini key returned a generated Polish example with source `GEMINI`. The instance with the example environment returned a SQLite example with source `LOCAL`. The browser demo uses the instance without a key.

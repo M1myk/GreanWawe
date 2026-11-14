@@ -1,44 +1,52 @@
 # GreenWave
 
-A full-stack web MVP for exploring how traffic signals affect urban journeys. GreenWave is being developed as a transport-themed recruitment project for Xelerit.
+GreenWave is a full-stack transport simulation. It compares a standard A* baseline with my signal-aware GreenWave approach on a road map of Gdańsk. The interface adapts to large desktop displays and small phone screens, including route selection, driving view and results.
 
-## Project idea
+## Why GreenWave exists
 
-The planned application compares two virtual vehicles travelling across a small road network in Gdańsk:
+I wanted to reduce long urban journey times and see when smoother driving could also save fuel. A route that looks fast based on distance and speed limits can lose time at red lights or in stop-and-go traffic. The A* baseline chooses its route using road travel costs. GreenWave uses simulated signal information and congestion estimates to decide whether to change its speed or route. Both cars drive under the same simulated conditions.
 
-- **A*** chooses a baseline route using road travel costs.
-- **GreenWave** uses available information about nearby simulated signals to adjust speed and reconsider its route. It estimates arrival at each signal along a candidate path and carries any waiting time forward to the next junction.
+My target is for GreenWave to arrive faster in 98% of simulated comparisons with the A* baseline. That percentage is an unverified target. On short trips where both routes cover similar distances, signal awareness can reduce estimated fuel use by avoiding stops and repeated acceleration.
 
-Both runs use the same vehicle physics, simulation clock and pedestrian-event timeline. Results compare journey time, distance, stops, stopped time and speed variation. GreenWave is not assumed to win every comparison.
+- **Explore routing trade-offs.** Replay the same journey in different traffic modes and see when a detour saves time, when it costs fuel, and when staying on the main road works best.
+- **Understand routing decisions.** Follow the simulated car, inspect nearby signals and route options, and see why an alternative gained or lost its advantage.
+- **Repeat an experiment.** Save the route and its settings, including the random seed. Matching scenario and engine versions make comparisons reproducible. The results can support discussion of navigation strategies and signal coordination.
 
-All signal phases, cycles and pedestrian requests are simulated by the backend. No live traffic-signal or ITS data is used. Map geometry and background tiles are separate from simulated signal behaviour.
+## Implemented features
 
-## Current status
+| Feature | What the app does |
+| --- | --- |
+| Interactive map | Displays a full-screen Gdańsk map with a marked simulation area, streets, route lines, signals and traffic overlays. Supports dragging, zoom buttons, mouse-wheel zoom and touch gestures. Draws the local road network when background tiles are unavailable. |
+| Origin and destination | Search bundled street names and house numbers or place A/B pins on the map. Drag either pin or remove it with its clear button. The selected position stays visible and the car route starts or ends at a reachable road access point. The imported graph includes eligible service roads, parking aisles and residential streets. |
+| Ready-made journeys | Load the Kołobrzeska–Pomorska example or the Strzyża–Drzewieckiego rush-hour example. The saved-trip form also offers a small synthetic test scenario. |
+| Saved trips | Create, list, edit, delete or load a named configuration into the comparison. Presets store the scenario, endpoints, traffic mode, seed, speed cap, acceleration, braking, GreenWave observation distance, decision interval and run time limit. SQLite persists presets across restarts. |
+| A* baseline | Chooses a route from road travel costs and keeps it throughout the run. The simulated car still responds to traffic, signals, road limits and maneuver speed limits. |
+| GreenWave routing | Estimates travel and signal waits along candidate routes. Uses observed congestion, maneuver constraints and a minimum improvement before switching during a run. The default observation range is 1,500 m and the planner can consider up to ten routes when viable options exist. The map highlights alternatives and shows estimated time, signal wait, congestion delay and recent decisions. The driving panel compares the forecast for the fastest or highlighted alternative with the selected route. |
+| GreenWave speed adaptation | Displays a target speed when an approaching green window is reachable. The simulation allows a boost of up to 20 km/h over the ordinary road cap on eligible approaches, subject to movement constraints. If a wait is predicted, the vehicle can reach ordinary approach speed and then coast. |
+| Shared signals and vehicle physics | Both runs use the same clock, road network, vehicle model and seeded pedestrian-request timeline. Simulated fixed-cycle and pedestrian-triggered lights use a three-second yellow phase and the modeled 30 m decision rule. Cars accelerate, brake and slow for turns and junctions. |
+| Traffic scenarios | Choose no congestion, normal traffic or rush hour. Orange and red overlays mark simulated slowdowns. Queued vehicles crawl, brake, stop and accelerate repeatedly. |
+| Playback and driving view | Start, pause, resume or reset both runs together and choose 0.5×, 1×, 2×, 5× or 10× playback. Follow either car on a heading-up map. The view shows the current street, upcoming junction or light, distance, estimated approach time, signal countdown, speed and road speed limit when available. Return to the overview at any time. |
+| Live metrics and stored results | Compare travel time, distance, speed variation, stops, stopped time, instantaneous fuel use, total gasoline, average consumption and acceleration-related fuel correction. The final summary shows signed GreenWave differences in time, fuel and stops. Completed comparisons remain available through the REST API after a restart. |
+| Saved-time example | When GreenWave arrives ahead, the backend can ask Gemini for a short Polish sentence using the forecast time difference. The final result shows a sentence only when the measured saving reaches 30 seconds. The UI labels Gemini and SQLite examples separately. SQLite supplies duration-matched examples when generation is unavailable or unsuitable. Recent topics and text are checked to reduce repetition. |
 
-The full-screen map runs A* and GreenWave together. Both cars share the same simulation time and signal conditions and apply the same maneuver speed limits. SQLite stores the final comparison result and saved trip configurations. The single-run API remains available for separate experiments.
+## What the results represent
 
-## Planned MVP
+This is a simplified simulation of part of Gdańsk. OpenStreetMap supplies road geometry, addresses and optional background tiles. Fictional traffic lights are assigned to locations on the road graph within the simulation area. Some run on fixed cycles, and others respond to simulated pedestrian requests. All signal phases, traffic volumes and congestion are generated by the simulation. The traffic modes let you observe how a car slows down, stops, pulls away and crawls through a queue.
 
-- Select start and destination nodes on a small map.
-- Create, read, update and delete saved trip configurations through the UI and REST API.
-- Simulate acceleration, braking and fixed-cycle or pedestrian-triggered signals.
-- Start, pause, resume and reset a comparison; change playback speed.
-- Display both vehicles and routes, then compare their results.
-- Save configurations and completed results locally using SQLite.
-- Reproduce runs using the same configuration, seed and data/engine versions.
+GreenWave can see lights on multiple branches of the directed road graph within its observation range, which defaults to 1,500 m of road distance. If normal speed would miss a known green window, the virtual car can use up to **20 km/h above its ordinary speed cap** on eligible approaches. Braking and maneuver constraints still apply. When it expects to reach a red light, GreenWave can release the throttle and coast. The fuel model counts zero injection while the car decelerates above **20 km/h** without needing engine power.
 
-Live GPS navigation, real signal control, traffic queues, multiple interacting vehicles and machine-learning predictions are outside the MVP.
+The fuel model estimates consumption for a warmed-up 2.0 L gasoline car, including idling and repeated acceleration. The road extract limits which roads and maneuvers are available. Arrival times and fuel figures reflect those assumptions and the selected scenario.
 
-## Architecture and proposed technologies
+## Architecture
 
 | Layer | Responsibility | Technology |
 | --- | --- | --- |
-| Backend | REST, simulation, routing, validation, metrics | Java 21, Spring Boot 4.1.2, Maven |
-| Frontend | Map, forms, controls, animation and results | React 19.3.1, TypeScript 7.0.2, Vite 8.3.7; Tailwind CSS and Leaflet planned |
-| Database | Saved configurations, scenarios and results | SQLite through Xerial JDBC; no external database server |
-| Map | Road geometry and background | Prepared OpenStreetMap extract and local SVG road view |
+| Backend | REST, validation, simulation clock, vehicle physics, routing and metrics | Java 21, Spring Boot, Maven |
+| Frontend | Map, address search, trip forms, animation and comparison panels | React, TypeScript, Vite, SVG and CSS |
+| Database | Scenarios, saved configurations, terminal results and example history | SQLite, Xerial JDBC, Hibernate and Flyway |
+| Local deployment | Start both services, serve the frontend and proxy same-origin API requests | Docker Compose and nginx |
 
-The backend is in `backend/`, the frontend in `frontend/`. Direct dependency versions are pinned in their manifests, with the frontend lockfile included. SQLite integration now uses Xerial JDBC 3.54.1.0, Hibernate community dialects 7.4.13.Final and Flyway 12.4.0 (Hibernate/Flyway managed by Spring Boot). The full-screen view overlays the stored road graph bounds and endpoint pins on OpenStreetMap tiles. The local road drawing provides a fallback if tiles fail. Set VITE_MAP_TILE_URL to override the tile URL template. Tailwind remains deferred.
+The backend and frontend live in `backend/` and `frontend/`. The backend owns the simulation state, including both routes, signal phases and fuel calculation. The browser polls the REST API and interpolates motion for display. Standalone development uses configurable CORS. Compose runs both services together and keeps the SQLite database in a mounted directory.
 
 ## How I am building the project
 
@@ -53,7 +61,7 @@ For each feature I follow this cycle:
 5. Review the changes and run appropriate automated tests.
 6. Keep the specification, code and tests aligned, including after manual changes.
 
-I remain responsible for scope, design decisions, understanding the solution and reviewing generated changes. Work is planned in small increments; Git branches and diff reviews will be used once the repository is initialized.
+I remain responsible for scope, design decisions, understanding the solution and reviewing generated changes. Work is planned in small increments; I use Git branches and diff reviews for each increment.
 
 ## Development stages
 
@@ -64,9 +72,9 @@ I remain responsible for scope, design decisions, understanding the solution and
 | 3. Saved trips | End-to-end CRUD with SQLite and a simple UI | Implemented and verified |
 | 4. Road network | Small Gdańsk extract, validated graph and map display | Implemented |
 | 5. Baseline simulation | Clock, signals, vehicle physics and A* | Implemented |
-| 6. GreenWave | Limited-observation routing and speed adaptation | Implemented in the API |
+| 6. GreenWave | Limited-observation routing and speed adaptation | Implemented in the API and comparison UI |
 | 7. Integration and verification | Controls, animation, results and reproducibility checks | Implemented |
-| 8. Submission | Verified setup guide, GIF/MP4 demo and public GitHub repository | Planned |
+| 8. Submission | Verified setup guide, MP4 demo and public GitHub repository | Local verification and recording complete. Public submission pending. |
 
 The [implementation plan](.spec/implementation_plan.md) gives more detail. The approved 30 m yellow-light rule and open numerical defaults are recorded in the [decision register](.spec/decisions.md).
 
@@ -76,7 +84,7 @@ I use **ChatGPT and Codex (OpenAI)** as engineering assistants and technical men
 
 In stage 2, AI also implemented the Java/React skeletons, configured CORS, prepared and ran three HTTP integration tests, built the frontend and checked browser connection, failure and recovery states. In stage 3, AI also prepared the layered preset implementation, migrations, OpenAPI contract, React CRUD UI and integration tests. Testing exposed an initial null-version getter bug; AI fixed it and reran the suite. In stage 5, AI implemented the baseline simulation, map controls and regression tests. Tests exposed an issue with the last braking increment; AI corrected the stopping calculation. In stage 6, AI implemented the signal-aware planner, the shared maneuver speed limits and the related tests. In stage 7, AI connected both vehicle runs to a shared clock and built the comparison controls, map view, SQLite storage and regression tests. The app optionally uses Gemini to generate a short Polish example of what the user can do with the time saved. SQLite provides local examples when a generated sentence is unavailable.
 
-Agent behaviour and constraints are documented in [AGENTS.md](AGENTS.md). Actual activities, findings and verification are recorded in the [SDD report](docs/sdd_report.md). Private conversation exports and conversation links are excluded from public project materials.
+In stage 8, I used Codex to help phrase and format the README and its screenshot captions. Codex also helped verify the setup from a clean copy. The project records the agent instructions and the checks performed. [Agent instructions](AGENTS.md) · [SDD report](docs/sdd_report.md)
 
 ## Documentation
 
@@ -97,7 +105,7 @@ cp -n .env.example .env
 docker compose up -d --build --wait
 ```
 
-Open [GreenWave](http://localhost:3000). The frontend serves the app and forwards requests under `/api/v1/` to the backend. Both services start from the same Compose command. The backend initializes SQLite and runs Flyway migrations at startup.
+Open [GreenWave](http://localhost:3000) and check the [API health endpoint](http://localhost:3000/api/v1/health). Both use port 3000 by default. If you change `GREENWAVE_PORT`, use that port in both URLs. Compose starts both services, and the frontend forwards `/api/v1/` requests to the backend inside Docker. Port 8080 is available on the host when you start the standalone Java backend as described below. The backend initializes SQLite and runs Flyway migrations at startup.
 
 Edit the root `.env` to set the optional `GEMINI_API_KEY`, the Gemini model, the browser port, the map tile URL or the SQLite data directory. Keep the Gemini key in this local file. Git ignores it and Compose passes the key only to the backend at runtime. Run `docker compose up -d --build --wait` again after editing the configuration. [Docker Compose environment configuration](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
 
@@ -105,7 +113,8 @@ Use `docker compose down` to stop both services. The database remains in `state/
 
 ```sh
 mkdir -p state/docker
-test ! -e state/docker/greenwave.db && sqlite3 backend/greenwave.db '.backup state/docker/greenwave.db'
+test -f backend/greenwave.db && test ! -e state/docker/greenwave.db && \
+  sqlite3 backend/greenwave.db '.backup state/docker/greenwave.db'
 ```
 
 ## Local development and tests
@@ -124,13 +133,19 @@ mvn verify
 java -jar target/greenwave-backend-0.1.0-SNAPSHOT.jar
 ```
 
-Stop a running JAR before rebuilding it, then restart with the new artifact. Leave this terminal running. The API listens on the loopback interface at `http://localhost:8080`. Open `http://localhost:8080/api/v1/health` to see:
+Stop a running JAR before rebuilding it, then restart with the new artifact. Leave this terminal running. Open the [standalone API health endpoint](http://localhost:8080/api/v1/health) or run the following from a second terminal:
+
+```sh
+curl -fsS http://localhost:8080/api/v1/health
+```
+
+The endpoint returns:
 
 ```json
 {"status":"UP","application":"greenwave"}
 ```
 
-This endpoint checks application availability, not database readiness.
+The endpoint reports application availability. To also check a read from SQLite, open the [scenario list](http://localhost:8080/api/v1/scenarios). If the connection is refused, check that Java finished starting and that the URL uses the port configured by `SERVER_PORT` (8080 by default). For a Compose-only startup, use the health link in the Docker section.
 
 ### Optional Gemini setup for standalone Java
 
@@ -150,12 +165,12 @@ In a second terminal, from the repository root:
 
 ```sh
 cd frontend
-cp .env.example .env.local
+cp -n .env.example .env.local
 npm ci
 npm run dev
 ```
 
-Open `http://localhost:5173` to see the full-screen Gdańsk road map. Search for an imported street in **Skąd** or **Dokąd**, or focus a field and click near a road on the map. Blue A marks the origin and red B marks the destination.
+Open the [Vite frontend](http://localhost:5173) to see the full-screen Gdańsk road map. Search for an imported street in **Skąd** or **Dokąd**, or focus a field and click near a road on the map. Blue A marks the origin and red B marks the destination.
 
 Once a route is available, press **Rozpocznij teraz** to start both cars. The blue line is A* and the dashed green line is GreenWave. Driving View follows the selected car. The top banner shows its current street and upcoming junction or light, while the bottom panel shows controls and the estimated time difference for the fastest or highlighted alternative relative to the selected GreenWave route. Switch the followed car with the A* and GreenWave buttons, or use **×** to return to the overview. Use **Pauza**, **Wznów**, **Reset** and **Tempo** to control both runs together. Playback supports up to 10× and the default trip limit is 3,000 simulated seconds. Yellow lasts 3 seconds for both signal types. The table compares travel time, distance, stops, stopped time, speed variation and estimated gasoline use. GreenWave can show a target speed to reach the current green window. Its simulation-only boost is at most 20 km/h above the ordinary cap on compatible approach segments. The default planner observes 1,500 m of directed roads and compares up to ten route variants. With predicted waiting, it accelerates normally before coasting toward the light. Both cars use the same [2.0 L fuel estimate](docs/fuel-model.md). Finished results remain available from GET /api/v1/comparisons/{id}/result after restart. Reset replaces the saved result. Stop each server with Ctrl+C.
 
@@ -238,4 +253,42 @@ See [road data provenance](docs/road-network-data.md) for the extract bounds, li
 
 ## Demonstration
 
-A short GIF or MP4 showing saved-trip CRUD and a simulation comparison will be added to the repository before submission. No demonstration recording is available yet.
+A short recording is linked below. Try the app yourself to choose your own endpoints, change the traffic level and see how the two approaches handle the same journey. [Watch the short recording](docs/greenwave-demo.mp4) · [Run the app](#run-with-docker-compose)
+
+### Choose a route and set the traffic level
+
+**Desktop route preview.** Place or drag pins A and B. The map shows the road route and separate access markers when the car starts or stops away from the pin.
+
+![Desktop map with draggable endpoints and a route to Brzeźno](docs/screenshots/desktop-route-preview.png)
+
+**Rush-hour scenario.** Orange and red overlays show simulated slowdowns and heavy congestion before the comparison starts.
+
+![Rush-hour route preview with congestion overlays and the simulation boundary](docs/screenshots/desktop-rush-hour.png)
+
+### Follow the cars and compare their progress
+
+**Desktop driving view.** Follow either car on a map that rotates with its heading. The panels show the current street, upcoming junction, speed limit, playback controls and the forecast for the best alternative.
+
+![Desktop driving view with A* and GreenWave routes, signals and traffic](docs/screenshots/desktop-driving-view.png)
+
+| Live metrics | Completed rush-hour result |
+| --- | --- |
+| ![Live metrics with A* still driving and GreenWave at the destination](docs/screenshots/live-metrics.png) | ![Rush-hour summary with time, fuel, stops and a Gemini example](docs/screenshots/rush-hour-result-gemini.png) |
+| Compare speed, fuel, distance and time spent stopped while the cars are still on the road. | See the final differences and the Gemini label on the saved-time example. |
+
+### Use the app on a phone
+
+| Route picker | Driving view | Arrival summary |
+| --- | --- | --- |
+| ![Mobile route picker showing Kołobrzeska to Pomorska](docs/screenshots/mobile-route-picker.png) | ![Mobile driving view with intersection details and route alternatives](docs/screenshots/mobile-driving-view.png) | ![Mobile arrival summary with a saved-time example from SQLite](docs/screenshots/mobile-result.png) |
+| Pick a route and traffic mode using the panel below the map. | Switch cars, inspect alternatives and change playback speed from the driving panel. | Review time, fuel and stops, with the SQLite source label for the example. |
+
+### Review the completed comparison
+
+**Route overview.** The solid blue line is the A* baseline and the dashed green line is GreenWave. Both cars have reached Pomorska.
+
+![Completed desktop comparison with both routes and summary metrics](docs/screenshots/desktop-completed-comparison.png)
+
+**Detailed breakdown.** The results panel shows the distance, trip time, fuel estimate and stops for each car.
+
+![Detailed no-congestion comparison showing 40 seconds and 112.6 mL saved](docs/screenshots/short-trip-metrics.png)

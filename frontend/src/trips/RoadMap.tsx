@@ -13,6 +13,7 @@ import { alternativeForecast, timeDifference, timeDifferenceLabel } from './rout
 const runColors: Record<Algorithm, string> = { ASTAR: '#1458bf', GREENWAVE: '#087a48' };
 
 const alternativeColor = '#7136ad';
+const MAX_ACCESS_DISTANCE_M = 250;
 const forecastSeconds = (seconds: number) => Math.round(seconds).toLocaleString('pl-PL') + ' s';
 
 const noticeLabels = {
@@ -223,14 +224,24 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
       setHint('Wybierz miejsce wewnątrz zaznaczonego obszaru.');
       return false;
     }
+    const otherEndpoint = endpoint === 'startNodeId' ? 'destinationNodeId' : 'startNodeId';
     const other = endpoint === 'startNodeId' ? destination : start;
-    const id = nearestAccessNode(network.edges, points, endpoint, point, other);
-    if (!id) {
-      setHint('Brak punktu dojazdu dla tego przejazdu.');
-      return false;
+    const otherLocation = locations[otherEndpoint];
+    const otherPin = otherLocation?.id === other ? otherLocation : undefined;
+    const resolve = (field: Endpoint, target: Point, fixed: string) =>
+      nearestAccessNode(network.edges, points, field, target, fixed);
+    let id = other || !otherPin ? resolve(endpoint, point, other) : '';
+    if (!id && otherPin) {
+      const nearby = resolve(endpoint, point, '');
+      const connected = nearby && resolve(otherEndpoint, otherPin.point, nearby);
+      if (connected) {
+        updateEndpoint(otherEndpoint, connected, otherPin.point, otherPin.label);
+        id = nearby;
+      } else if (!other) {
+        id = nearby;
+      }
     }
-    const access = points.get(id);
-    updateEndpoint(endpoint, id, access && Math.hypot(access.x - point.x, access.y - point.y) < 0.01 ? undefined : point, label);
+    updateEndpoint(endpoint, id, point, label);
     return true;
   }
   function changeZoom(delta: number) {
@@ -278,6 +289,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
       const selected = index ? destination : start;
       return <EndpointField key={key + ':' + selected} label={index ? 'Dokąd' : 'Skąd'}
         marker={index ? 'B' : 'A'} selected={selected} names={streetNames}
+        hasPin={locations[key]?.id === selected}
         addresses={networkId === 'gdansk-v3' ? addresses : undefined}
         addressLabel={locations[key]?.id === selected ? locations[key]?.label : undefined}
         chooseAddress={([label, lat, lon]) => {
@@ -303,6 +315,9 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
     })}
     <p role="status">{error ? 'Nie udało się wczytać mapy.' : !drawing ? 'Wczytywanie mapy…'
       : hint || (field === 'startNodeId' ? 'Wybierasz A · start' : 'Wybierasz B · cel')}</p>
+    {(['startNodeId', 'destinationNodeId'] as const).map((key, index) =>
+      locations[key]?.id === '' && !(index ? destination : start) &&
+      <p key={key} role="status">Brak połączenia drogowego w pobliżu punktu {index ? 'B' : 'A'}. Przesuń pinezkę bliżej dostępnej drogi.</p>)}
     {onTrafficMode && <label className="traffic-select">Ruch samochodowy
       <select value={trafficMode} onChange={event => onTrafficMode(event.target.value as TrafficMode)}>
         {trafficModes.map(mode => <option key={mode} value={mode}>{trafficLabels[mode]}</option>)}
@@ -479,7 +494,7 @@ export function RoadMap({ networkId, start, destination, onSelect, fullScreen, o
         }
 
         return <g key={endpoint}>
-          {selected && access && !dragging && <g transform={`translate(${access.x} ${access.y}) scale(${pinScale})`} pointerEvents="none">
+          {selected && access && Math.hypot(selected.x - access.x, selected.y - access.y) >= 0.01 && !dragging && <g transform={`translate(${access.x} ${access.y}) scale(${pinScale})`} pointerEvents="none">
             <title>{index ? 'Punkt zakończenia dojazdu B' : 'Punkt rozpoczęcia dojazdu A'}</title>
             <circle r="10" fill="white" stroke={index ? '#cf392c' : '#1670df'} strokeWidth="2" />
             <path d="M-5 2V-2l2-4h6l2 4v4h-2v-2h-6v2Z" fill={index ? '#cf392c' : '#1670df'} />
@@ -640,7 +655,9 @@ function nearestAccessNode(edges: Network['edges'], points: Map<string, Point>,
   }
 
   let closest = '';
-  let distance = Infinity;
+  // Convert Web Mercator map units to ground meters at the pin latitude.
+  const metersPerUnit = 40_075_016.7 / WORLD_SIZE / Math.cosh((0.5 - target.y / WORLD_SIZE) * 2 * Math.PI);
+  let distance = MAX_ACCESS_DISTANCE_M / metersPerUnit;
   for (const id of eligible) {
     const point = points.get(id);
     if (!point) continue;
@@ -731,6 +748,7 @@ interface EndpointProps {
   label: string;
   marker: string;
   selected: string;
+  hasPin: boolean;
   accessLabel?: string;
   addressLabel?: string;
   addresses?: Address[];
@@ -747,7 +765,7 @@ function normalize(value: string) {
     .replace(/\p{Diacritic}/gu, '').replaceAll('ł', 'l').trim().replace(/\s+/g, ' ');
 }
 
-function EndpointField({ label, marker, selected, names, active, activate, choose, clear, accessLabel, addressLabel, addresses, chooseAddress }: EndpointProps) {
+function EndpointField({ label, marker, selected, hasPin, names, active, activate, choose, clear, accessLabel, addressLabel, addresses, chooseAddress }: EndpointProps) {
   const [query, setQuery] = useState<string>();
   const term = normalize(query ?? '');
   const searchingAddress = /\d/.test(term);
@@ -774,11 +792,11 @@ function EndpointField({ label, marker, selected, names, active, activate, choos
   }}>
     <div className="endpoint-row"><label><span className={`endpoint-marker marker-${marker}`}>{marker}</span>
       <span>{label}</span>
-      <input type="search" placeholder="Wpisz ulicę lub adres" value={query ?? (addressLabel ?? (accessLabel ? `Pinezka ${marker}` : selected ? names?.get(selected) ?? `Punkt ${selected}` : ''))}
+      <input type="search" placeholder="Wpisz ulicę lub adres" value={query ?? (addressLabel ?? (hasPin ? `Pinezka ${marker}` : selected ? names?.get(selected) ?? `Punkt ${selected}` : ''))}
         onFocus={event => { activate(); event.currentTarget.select(); }}
         onChange={event => setQuery(event.currentTarget.value)} />
     </label>
-      {selected && <button className="clear-endpoint" type="button" aria-label={`Usuń punkt ${marker}`}
+      {(selected || hasPin) && <button className="clear-endpoint" type="button" aria-label={`Usuń punkt ${marker}`}
         onClick={() => { setQuery(undefined); clear(); }}>×</button>}
     </div>
     {accessLabel && <p className="map-tip">{marker === 'A' ? 'Start auta' : 'Koniec dojazdu'} · {accessLabel}</p>}
